@@ -20,11 +20,11 @@ obj/
 Thumbs.db
 
 # === Config Files ===
-appsettings.*.json
-appsettings.json
-!appsettings.Development.json
-.env
-secrets.json
+**/appsettings.*.json
+**/appsettings.json
+!**/appsettings.Development.json
+**/.env
+**/secrets.json
 
 # === Tests / Coverage ===
 TestResults/
