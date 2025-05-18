@@ -1,6 +1,6 @@
 ﻿using ArzenalApi.Data;
-using ArzenalApi.DTOs.AppDto;
-using ArzenalApi.DTOs.LanguageDto;
+using Arzenal.Shared.Dtos.DTOs.AppDto;
+using Arzenal.Shared.Dtos.DTOs.LanguageDto;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;

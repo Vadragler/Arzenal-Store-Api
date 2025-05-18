@@ -1,5 +1,5 @@
 ﻿using ArzenalApi.Data;
-using ArzenalApi.DTOs.OperatingSystemDto;
+using Arzenal.Shared.Dtos.DTOs.OperatingSystemDto;
 using ArzenalApi.Models;
 using Microsoft.Extensions.DependencyInjection;
 using System;

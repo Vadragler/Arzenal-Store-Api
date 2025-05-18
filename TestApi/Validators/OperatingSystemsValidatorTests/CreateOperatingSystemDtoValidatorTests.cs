@@ -1,5 +1,5 @@
-﻿using ArzenalApi.DTOs.OperatingSystemDto;
-using ArzenalApi.Validators.OperatingSystemDtoValidators;
+﻿using Arzenal.Shared.Dtos.DTOs.OperatingSystemDto;
+using Arzenal.Shared.Dtos.Validators.OperatingSystemDtoValidators;
 using FluentValidation.TestHelper;
 
 namespace TestApi.Validators.OperatingSystemsValidatorTests

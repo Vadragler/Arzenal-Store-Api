@@ -1,5 +1,5 @@
-﻿using ArzenalApi.DTOs.OperatingSystemDto;
-using ArzenalApi.DTOs.TagDto;
+﻿using Arzenal.Shared.Dtos.DTOs.OperatingSystemDto;
+using Arzenal.Shared.Dtos.DTOs.TagDto;
 using System.Net;
 using System.Text;
 using System.Text.Json;

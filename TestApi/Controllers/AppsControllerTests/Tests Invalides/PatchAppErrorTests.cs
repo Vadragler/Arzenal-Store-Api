@@ -1,4 +1,4 @@
-﻿using ArzenalApi.DTOs.AppDto;
+﻿using Arzenal.Shared.Dtos.DTOs.AppDto;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -42,6 +42,27 @@ namespace TestApi.Controllers.AppsControllerTests.Tests_Invalides
                "application/json");
             // Act
             var postResponse = await _client.PostAsync("/api/apps", jsonContent);
+            postResponse.EnsureSuccessStatusCode();
+            newApp = new CreateAppDto
+            {
+                Name = "New Name Not Alredy Exist",
+                Description = "Updated description",
+                IsVisible = true,
+                Version = "2.0",
+                FilePath = "C:/Updated.exe",
+                IconePath = "C:/Icons/updated.png",
+                Requirements = "Windows 11",
+                AppSize = 250,
+                LastUpdated = DateTime.UtcNow,
+                CategoryId = 1,
+
+            };
+            jsonContent = new StringContent(
+               JsonSerializer.Serialize(newApp),
+               Encoding.UTF8,
+               "application/json");
+            // Act
+            postResponse = await _client.PostAsync("/api/apps", jsonContent);
             postResponse.EnsureSuccessStatusCode();
             var responseJson = await postResponse.Content.ReadAsStringAsync();
             var responseObject = JsonSerializer.Deserialize<ReadAppDto>(responseJson, new JsonSerializerOptions

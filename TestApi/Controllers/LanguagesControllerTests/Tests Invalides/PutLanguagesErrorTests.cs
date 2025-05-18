@@ -1,4 +1,4 @@
-﻿using ArzenalApi.DTOs.LanguageDto;
+﻿using Arzenal.Shared.Dtos.DTOs.LanguageDto;
 using System.Net;
 using System.Text;
 using System.Text.Json;

@@ -1,5 +1,5 @@
 ﻿using ArzenalApi.Data;
-using ArzenalApi.DTOs.TagDto;
+using Arzenal.Shared.Dtos.DTOs.TagDto;
 using ArzenalApi.Models;
 using Microsoft.Extensions.DependencyInjection;
 using System;

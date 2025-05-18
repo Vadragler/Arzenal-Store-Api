@@ -1,6 +1,6 @@
 ﻿using ArzenalApi.Data;
-using ArzenalApi.DTOs.AppDto;
-using ArzenalApi.DTOs.OperatingSystemDto;
+using Arzenal.Shared.Dtos.DTOs.AppDto;
+using Arzenal.Shared.Dtos.DTOs.OperatingSystemDto;
 using ArzenalApi.Models;
 using System;
 using System.Collections.Generic;

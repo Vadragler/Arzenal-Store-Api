@@ -1,5 +1,5 @@
-﻿using ArzenalApi.Data;
-using ArzenalApi.DTOs.AppDto;
+﻿using Arzenal.Shared.Dtos.DTOs.AppDto;
+using ArzenalApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

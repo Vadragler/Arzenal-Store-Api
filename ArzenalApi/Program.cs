@@ -1,12 +1,13 @@
 using ArzenalApi.Data;
 using FluentValidation.AspNetCore;
-using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using ArzenalApi.Services;
 using ArzenalApi.Middleware;
+using FluentValidation;
+using Arzenal.Shared.Dtos;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors(options =>
@@ -59,7 +60,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddControllers();
 // Ajoute les validators manuellement ou automatiquement
-builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+builder.Services.AddValidatorsFromAssemblyContaining<ValidatorAssemblyReference>();
 
 // Active la validation automatique via les filtres d'API
 builder.Services.AddFluentValidationAutoValidation();

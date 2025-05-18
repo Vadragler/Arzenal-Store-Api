@@ -1,4 +1,4 @@
-﻿using ArzenalApi.DTOs.AppDto;
+﻿using Arzenal.Shared.Dtos.DTOs.AppDto;
 using System;
 using System.Collections.Generic;
 using System.Linq;

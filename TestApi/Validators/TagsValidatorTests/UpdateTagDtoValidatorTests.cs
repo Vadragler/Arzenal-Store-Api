@@ -1,5 +1,5 @@
-﻿using ArzenalApi.DTOs.TagDto;
-using ArzenalApi.Validators.TagDtoValidators;
+﻿using Arzenal.Shared.Dtos.DTOs.TagDto;
+using Arzenal.Shared.Dtos.Validators.TagDtoValidators;
 using FluentValidation.TestHelper;
 
 namespace TestApi.Validators.TagsValidatorTests

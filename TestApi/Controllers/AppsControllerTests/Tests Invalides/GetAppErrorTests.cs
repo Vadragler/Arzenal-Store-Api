@@ -1,4 +1,5 @@
-﻿using ArzenalApi.DTOs.AppDto;
+﻿
+using Arzenal.Shared.Dtos.DTOs.AppDto;
 using System.Net;
 using System.Text.Json;
 using TestApi.Infrastructure;

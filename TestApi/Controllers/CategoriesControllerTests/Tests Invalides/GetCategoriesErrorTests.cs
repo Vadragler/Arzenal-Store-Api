@@ -1,4 +1,4 @@
-﻿using ArzenalApi.DTOs.CategorieDto;
+﻿using Arzenal.Shared.Dtos.DTOs.CategorieDto;
 using System.Net;
 using System.Text.Json;
 using TestApi.Infrastructure;

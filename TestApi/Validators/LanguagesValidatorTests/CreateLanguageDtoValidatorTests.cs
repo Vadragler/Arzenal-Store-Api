@@ -1,5 +1,5 @@
-﻿using ArzenalApi.DTOs.LanguageDto;
-using ArzenalApi.Validators.LanguageDtoValidators;
+﻿using Arzenal.Shared.Dtos.DTOs.LanguageDto;
+using Arzenal.Shared.Dtos.Validators.LanguageDtoValidators;
 using FluentValidation.TestHelper;
 
 namespace TestApi.Validators.LanguagesValidatorTests

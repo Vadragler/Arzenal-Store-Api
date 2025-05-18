@@ -1,7 +1,7 @@
 using ArzenalApi.Controllers;
-using ArzenalApi.DTOs;
-using ArzenalApi.DTOs.AuthDto;
-using ArzenalApi.DTOs.RegisterDto;
+using Arzenal.Shared.Dtos.DTOs;
+using Arzenal.Shared.Dtos.DTOs.AuthDto;
+using Arzenal.Shared.Dtos.DTOs.RegisterDto;
 using ArzenalApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualStudio.TestPlatform.CommunicationUtilities;

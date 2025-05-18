@@ -1,5 +1,5 @@
-﻿using ArzenalApi.DTOs.CategorieDto;
-using ArzenalApi.Validators.CategorieDtoValidators;
+﻿using Arzenal.Shared.Dtos.DTOs.CategorieDto;
+using Arzenal.Shared.Dtos.Validators.CategorieDtoValidators;
 using FluentValidation.TestHelper;
 
 namespace TestApi.Validators.CategoriesValidatorTests
