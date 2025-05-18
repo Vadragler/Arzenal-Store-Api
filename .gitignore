@@ -1,0 +1,41 @@
+# === .NET Build Files ===
+bin/
+obj/
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# === Logs ===
+*.log
+
+# === Visual Studio / VSCode ===
+.vscode/
+.vs/
+.idea/
+
+# === OS files ===
+.DS_Store
+Thumbs.db
+
+# === Config Files ===
+appsettings.*.json
+!appsettings.Development.json
+.env
+secrets.json
+
+# === Tests / Coverage ===
+TestResults/
+coverage/
+
+# === Docker / Compose ===
+*.pid
+*.tar
+docker-compose.override.yml
+
+
+# === Others ===
+*.db
+*.sqlite
+*.pdb
