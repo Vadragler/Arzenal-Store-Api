@@ -22,7 +22,7 @@ Thumbs.db
 # === Config Files ===
 appsettings.*.json
 appsettings.json
-!appsettings.Development.json
+appsettings.Development.json
 .env
 secrets.json
 
