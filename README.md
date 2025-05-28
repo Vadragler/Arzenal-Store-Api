@@ -34,7 +34,6 @@ Elle permet la gestion des applications ainsi que l’inscription, la connexion 
 ## 📦 Dépendances principales
 
 - FluentValidation  
-- Newtonsoft.Json  
 
 ---
 
