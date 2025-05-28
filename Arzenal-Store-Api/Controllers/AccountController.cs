@@ -34,11 +34,10 @@ namespace ArzenalApi.Controllers
                 return BadRequest("User data is invalid.");
             }
 
-            return Ok(new
+            return Ok(new ReadAccountDto
             {
-                user.email,
-                user.username,
-                // ajoute d'autres champs si nécessaire
+                Username = user.username,
+                Email = user.email
             });
         }
 

@@ -38,7 +38,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ArzenalAPi\ArzenalApi.csproj" />
+    <ProjectReference Include="..\ArzenalAPi\Arzenal-Store-Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>
