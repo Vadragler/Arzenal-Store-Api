@@ -1,11 +1,11 @@
-using ArzenalApi.Data;
+using ArzenalStoreApi.Data;
 using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using ArzenalApi.Services;
-using ArzenalApi.Middleware;
+using ArzenalStoreApi.Services;
+using ArzenalStoreApi.Middleware;
 using FluentValidation;
 using Arzenal.Shared.Dtos;
 

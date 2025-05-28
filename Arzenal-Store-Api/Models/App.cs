@@ -1,4 +1,4 @@
-﻿namespace ArzenalApi.Models
+﻿namespace ArzenalStoreApi.Models
 {
     public class App
     {

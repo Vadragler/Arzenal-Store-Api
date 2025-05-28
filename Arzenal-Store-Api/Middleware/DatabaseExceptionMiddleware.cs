@@ -1,4 +1,4 @@
-﻿namespace ArzenalApi.Middleware
+﻿namespace ArzenalStoreApi.Middleware
 {
     public class DatabaseExceptionMiddleware
     {

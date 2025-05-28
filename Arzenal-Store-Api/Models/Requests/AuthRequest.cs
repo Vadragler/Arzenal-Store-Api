@@ -1,4 +1,4 @@
-﻿namespace ArzenalApi.Models.Requests
+﻿namespace ArzenalStoreApi.Models.Requests
 {
     public class AuthRequest
     {

@@ -1,12 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using ArzenalApi.Data;
-using ArzenalApi.Models;
+using ArzenalStoreApi.Data;
+using ArzenalStoreApi.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Arzenal.Shared.Dtos.DTOs.AppDto;
 
 
-namespace ArzenalApi.Controllers
+namespace ArzenalStoreApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

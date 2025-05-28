@@ -1,5 +1,5 @@
-﻿using ArzenalApi.Data;
-using ArzenalApi.Models;
+﻿using ArzenalStoreApi.Data;
+using ArzenalStoreApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 

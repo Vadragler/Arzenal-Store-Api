@@ -1,6 +1,6 @@
 ﻿using Arzenal.Shared.Dtos.DTOs.RegisterDto;
-using ArzenalApi.Data;
-using ArzenalApi.Models;
+using ArzenalStoreApi.Data;
+using ArzenalStoreApi.Models;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -8,7 +8,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace ArzenalApi.Services
+namespace ArzenalStoreApi.Services
 {
     public class AuthService : IAuthService
     {

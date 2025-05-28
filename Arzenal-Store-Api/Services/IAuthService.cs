@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Identity.Data;
 using System.Threading.Tasks;
 
-namespace ArzenalApi.Services
+namespace ArzenalStoreApi.Services
 {
     public interface IAuthService
     {

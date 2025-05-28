@@ -1,8 +1,8 @@
-﻿using ArzenalApi.Models;
+﻿using ArzenalStoreApi.Models;
 using Microsoft.EntityFrameworkCore;
-using OperatingSystem = ArzenalApi.Models.OperatingSystem;
+using OperatingSystem = ArzenalStoreApi.Models.OperatingSystem;
 
-namespace ArzenalApi.Data
+namespace ArzenalStoreApi.Data
 {
     public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
     {

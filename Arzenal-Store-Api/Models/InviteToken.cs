@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace ArzenalApi.Models
+namespace ArzenalStoreApi.Models
 {
     public class InviteToken
     {

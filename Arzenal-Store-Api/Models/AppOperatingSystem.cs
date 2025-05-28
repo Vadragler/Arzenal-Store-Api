@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace ArzenalApi.Models
+namespace ArzenalStoreApi.Models
 {
     public class AppOperatingSystem
     {

@@ -1,13 +1,13 @@
-﻿using Arzenal.Shared.Dtos.DTOs.AccountDto;
-using ArzenalApi.Services;
+﻿using ArzenalStoreApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Arzenal.Shared.Dtos.DTOs.AccountDto;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
-namespace ArzenalApi.Controllers
+namespace ArzenalStoreApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

@@ -1,7 +1,7 @@
-﻿using ArzenalApi.Models;
+﻿using ArzenalStoreApi.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace ArzenalApi.Data
+namespace ArzenalStoreApi.Data
 {
     public class AuthDbContext : DbContext
     {

@@ -1,10 +1,10 @@
 ﻿using Arzenal.Shared.Dtos.DTOs;
 using Arzenal.Shared.Dtos.DTOs.AuthDto;
 using Arzenal.Shared.Dtos.DTOs.RegisterDto;
-using ArzenalApi.Services;
+using ArzenalStoreApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ArzenalApi.Controllers
+namespace ArzenalStoreApi.Controllers
 {
     [Route("api/auth")]
     [ApiController]

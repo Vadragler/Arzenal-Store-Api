@@ -6,11 +6,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
 	  <PreserveCompilationContext>true</PreserveCompilationContext>
 	  <UserSecretsId>f9816d23-0db7-4042-99b5-3586b3c4f226</UserSecretsId>
-	  <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS> 
+	  <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+	  <RootNamespace>ArzenalStoreApi</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="FluentValidation" Version="12.0.0" />
     <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.15" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.15">
@@ -32,8 +34,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Arzenal.Shared.Dtos">
-      <HintPath>..\..\Arzenal.Shared.Dtos\Arzenal.Shared.Dtos\bin\Debug\net8.0\Arzenal.Shared.Dtos.dll</HintPath>
+    <Reference Include="ArzenalStore.Shared.Dtos">
+      <HintPath>..\..\Arzenal-Store-Shared-Dtos\Arzenal-Store-Shared-Dtos\bin\Debug\net8.0\Arzenal-Store-Shared-Dtos.dll</HintPath>
     </Reference>
   </ItemGroup>
 

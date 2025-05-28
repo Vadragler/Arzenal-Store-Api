@@ -1,13 +1,13 @@
 ﻿using Arzenal.Shared.Dtos.DTOs.CategorieDto;
-using ArzenalApi.Data;
-using ArzenalApi.Models;
+using ArzenalStoreApi.Data;
+using ArzenalStoreApi.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
-namespace ArzenalApi.Controllers
+namespace ArzenalStoreApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
