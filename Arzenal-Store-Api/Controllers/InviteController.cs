@@ -44,7 +44,7 @@ public class InviteController : ControllerBase
         await _context.SaveChangesAsync();
 
         // Crée le lien d'invitation avec le token généré
-        var inviteLink = $"https://ton-site.fr/signup?token={inviteToken.Token}"; // Utilise le Token pour créer le lien
+        var inviteLink = $"http://localhost:56525/signup?token={inviteToken.Token}"; // Utilise le Token pour créer le lien
 
         return Ok(new { inviteLink });
     }
