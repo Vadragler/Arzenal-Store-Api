@@ -54,6 +54,13 @@ Les scripts de création des schémas (tables, relations, contraintes) sont disp
 4. Exécuter le projet  
 
 ℹ️ L'API nécessite que les bases de données soient disponibles, soit en local, soit dans des conteneurs Docker.
+🔑 Inscription via token d'invitation
+Pour vous inscrire, vous devez d'abord générer un token d’invitation via Swagger en utilisant le contrôleur InviteTokenController et son endpoint Generate.
+Le token est valide pendant 7 jours (ce délai est défini dans la structure de la table).
+L'API retournera une URL contenant le token en paramètre. Il vous suffira d’utiliser cette URL pour afficher le formulaire d’inscription.
+
+📌 Important :
+Pensez à adapter le port dans l’URL retournée si celui-ci ne correspond pas à la configuration de votre environnement local ou distant.
 
 ---
 
