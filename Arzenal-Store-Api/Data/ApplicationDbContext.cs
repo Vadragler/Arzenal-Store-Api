@@ -40,84 +40,82 @@ namespace ArzenalStoreApi.Data
             modelBuilder.Entity<Tag>().ToTable("Tags");
             modelBuilder.Entity<Categorie>().ToTable("Categories");
 
+            ConfigureApp(modelBuilder);
+            ConfigureAppLanguage(modelBuilder);
+            ConfigureAppTag(modelBuilder);
+            ConfigureAppOperatingSystem(modelBuilder);
 
+        }
 
-            // Configuration de App
+        private void ConfigureApp(ModelBuilder modelBuilder)
+        {
             modelBuilder.Entity<App>(entity =>
             {
                 entity.HasKey(e => e.Id);
-
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
                 entity.Property(e => e.Version).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.FilePath).IsRequired().HasMaxLength(255);
-
                 entity.Property(e => e.Description).HasColumnType("text");
                 entity.Property(e => e.Icone).HasMaxLength(255);
                 entity.Property(e => e.Requirements).HasColumnType("text");
-
                 entity.Property(e => e.IsVisible).HasDefaultValue(true);
                 entity.Property(e => e.ReleaseDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(e => e.LastUpdated).IsRequired(false);
                 entity.Property(e => e.AppSize);
                 entity.Property(e => e.ReleaseDate)
                      .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
                 entity.Property(e => e.LastUpdated)
                     .IsRequired(false)
                     .ValueGeneratedOnUpdate()
                     .HasDefaultValueSql("NULL");
-
                 // Relation avec Categorie
                 entity.HasOne(e => e.Category)
                     .WithMany()
                     .HasForeignKey(e => e.CategoryId)
                     .OnDelete(DeleteBehavior.SetNull);
             });
+        }
 
-            // Configuration de AppLanguage
+        private void ConfigureAppLanguage(ModelBuilder modelBuilder)
+        {
             modelBuilder.Entity<AppLanguage>()
-    .HasKey(al => new { al.AppId, al.LanguageId });
-
+                .HasKey(al => new { al.AppId, al.LanguageId });
             modelBuilder.Entity<AppLanguage>()
                 .HasOne(al => al.App)
                 .WithMany(a => a.AppLanguages)
                 .HasForeignKey(al => al.AppId);
-
             modelBuilder.Entity<AppLanguage>()
                 .HasOne(al => al.Language)
                 .WithMany(l => l.AppLanguages)
                 .HasForeignKey(al => al.LanguageId);
+        }
 
-
-            // Configuration de AppTag
+        private void ConfigureAppTag(ModelBuilder modelBuilder)
+        {
             modelBuilder.Entity<AppTag>()
-    .HasKey(at => new { at.AppId, at.TagId });
-
+                .HasKey(at => new { at.AppId, at.TagId });
             modelBuilder.Entity<AppTag>()
                 .HasOne(at => at.App)
                 .WithMany(a => a.AppTags)
                 .HasForeignKey(at => at.AppId);
-
             modelBuilder.Entity<AppTag>()
                 .HasOne(at => at.Tag)
                 .WithMany(t => t.AppTags)
                 .HasForeignKey(at => at.TagId);
+        }
 
-
-            // Configuration de AppOperatingSystem
+        private void ConfigureAppOperatingSystem(ModelBuilder modelBuilder)
+        {
             modelBuilder.Entity<AppOperatingSystem>()
-    .HasKey(ao => new { ao.AppId, ao.OSId });
-
+                .HasKey(ao => new { ao.AppId, ao.OSId });
             modelBuilder.Entity<AppOperatingSystem>()
                 .HasOne(ao => ao.App)
                 .WithMany(a => a.AppOperatingSystems)
                 .HasForeignKey(ao => ao.AppId);
-
             modelBuilder.Entity<AppOperatingSystem>()
                 .HasOne(ao => ao.OperatingSystem)
                 .WithMany(os => os.AppOperatingSystems)
                 .HasForeignKey(ao => ao.OSId);
-
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

@@ -3,24 +3,21 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Sqlite;
 using Microsoft.AspNetCore.Hosting;
-using ArzenalApi.Data;
-using ArzenalApi.Models;
 //using OperatingSystem = ArzenalApi.Models.OperatingSystem;
 using Microsoft.Extensions.Logging;
+using Microsoft.Data.Sqlite; // pour SqliteConnection
+using System;
+using System.Linq;
+using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Authentication;
+using ArzenalStoreApi.Data;
+using ArzenalStoreApi.Models;
+using OperatingSystem = ArzenalStoreApi.Models.OperatingSystem;
 
 
-namespace TestApi.Infrastructure
+namespace TestArzenalStoreApi.Infrastructure
 {
-    using Microsoft.Data.Sqlite; // pour SqliteConnection
-    using Microsoft.EntityFrameworkCore;
-    using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.Extensions.Logging;
-    using Microsoft.AspNetCore.Hosting;
-    using Microsoft.AspNetCore.Mvc.Testing;
-    using System;
-    using System.Linq;
-    using Microsoft.Extensions.Hosting;
-    using Microsoft.AspNetCore.Authentication;
+   
 
     public class CustomWebApplicationFactory<TStartup> : WebApplicationFactory<TStartup> where TStartup : class
     {
@@ -98,8 +95,8 @@ namespace TestApi.Infrastructure
             var language2 = new Language { Id = 2, Name = "French" };
             var tag1 = new Tag { Id = 1, Name = "Productivity" };
             var tag2 = new Tag { Id = 2, Name = "Utility" };
-            var os1 = new ArzenalApi.Models.OperatingSystem { Id = 1, Name = "Windows" };
-            var os2 = new ArzenalApi.Models.OperatingSystem { Id = 2, Name = "Linux" };
+            var os1 = new OperatingSystem { Id = 1, Name = "Windows" };
+            var os2 = new OperatingSystem { Id = 2, Name = "Linux" };
             var category = new Categorie { Id = 1, Name = "Software" };
 
             context.Languages.AddRange(language1, language2);

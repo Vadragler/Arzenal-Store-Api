@@ -1,13 +1,32 @@
 using ArzenalStoreApi.Data;
+using ArzenalStoreApi.Middleware;
+using ArzenalStoreApi.Services.AppService;
+using ArzenalStoreApi.Services.Auth;
+using ArzenalStoreApi.Services.CategoryService;
+using ArzenalStoreApi.Services.CookieService;
+using ArzenalStoreApi.Services.LanguageService;
+using ArzenalStoreApi.Services.OperatingSystemService;
+using ArzenalStoreApi.Services.PasswordService;
+using ArzenalStoreApi.Services.RequestContextProvider;
+using ArzenalStoreApi.Services.RequestInfoProvider;
+using ArzenalStoreApi.Services.TagService;
+using ArzenalStoreApi.Services.Token;
+using ArzenalStoreApi.Services.UserService;
+using ArzenalStoreSharedDto;
+using ArzenalStoreSharedDto.Validators;
+using ArzenalStoreSharedDto.Validators.AppDtoValidators;
+using ArzenalStoreSharedDto.Validators.AuthDtoValidators;
+using ArzenalStoreSharedDto.Validators.CategorieDtoValidators;
+using ArzenalStoreSharedDto.Validators.LanguageDtoValidators;
+using ArzenalStoreSharedDto.Validators.OperatingSystemDtoValidators;
+using ArzenalStoreSharedDto.Validators.TagDtoValidators;
+using FluentValidation;
 using FluentValidation.AspNetCore;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using ArzenalStoreApi.Services;
-using ArzenalStoreApi.Middleware;
-using FluentValidation;
-using Arzenal.Shared.Dtos;
+
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors(options =>
@@ -16,7 +35,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins("http://localhost:56525") // Remplace par l'URL de ton app Angular
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -37,6 +57,21 @@ builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseMySql(builder.Configuration.GetConnectionString("AuthConnection"),
                      ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("AuthConnection")));
 });
+
+builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IAppService, AppService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<ILanguageService, LanguageService>();
+builder.Services.AddScoped<IOperatingSystemService, OperatingSystemService>();
+builder.Services.AddScoped<ITagService, TagService>();
+builder.Services.AddScoped<IRequestContextProvider, RequestContextProvider>();
+builder.Services.AddScoped<IRequestInfoProvider, RequestInfoProvider>();
+builder.Services.AddScoped<ICookieService, CookieService>();
+builder.Services.AddScoped<IPasswordService, PasswordService>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+
 
 // Configuration de l'authentification JWT
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -62,6 +97,7 @@ builder.Services.AddControllers();
 // Ajoute les validators manuellement ou automatiquement
 builder.Services.AddValidatorsFromAssemblyContaining<ValidatorAssemblyReference>();
 
+
 // Active la validation automatique via les filtres d'API
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();
@@ -74,6 +110,9 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+
+
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -84,9 +123,20 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowAngularApp"); // Utilise la politique CORS définie
 app.UseMiddleware<DatabaseExceptionMiddleware>();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
 
 app.UseHttpsRedirection();
 
+app.Use(async (context, next) =>
+{
+    var token = context.Request.Cookies["authToken"];
+    if (!string.IsNullOrEmpty(token) && !context.Request.Headers.ContainsKey("Authorization"))
+    {
+        context.Request.Headers.Add("Authorization", $"Bearer {token}");
+    }
+    await next();
+});
 
 app.UseAuthentication(); // Active l'authentification
 app.UseAuthorization();

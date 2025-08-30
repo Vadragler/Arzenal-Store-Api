@@ -1,4 +1,4 @@
-﻿namespace TestApi.Infrastructure
+﻿namespace TestArzenalStoreApi.Infrastructure
 {
     public static class TestHelpers
     {

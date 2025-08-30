@@ -3,19 +3,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ArzenalStoreApi.Data
 {
-    public class AuthDbContext : DbContext
+    public class AuthDbContext(DbContextOptions<AuthDbContext> options) : DbContext(options)
     {
-        public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options)
-        {
-        }
         public DbSet<User> Users { get; set; }
         public DbSet<InviteToken> InviteTokens { get; set; }
+
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
 
             modelBuilder.Entity<InviteToken>().ToTable("InviteTokens");
             modelBuilder.Entity<User>().ToTable("User");
+            modelBuilder.Entity<RefreshToken>().ToTable("RefreshTokens");
 
             modelBuilder.Entity<User>(entity =>
             {
@@ -25,6 +25,12 @@ namespace ArzenalStoreApi.Data
                 entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
                 //entity.Property(e => e.Group).IsRequired().HasMaxLength(20);
             });
+
+            modelBuilder.Entity<RefreshToken>()
+            .HasOne(rt => rt.User)
+            .WithMany(u => u.RefreshTokens) //si tu veux un lien inverse
+            .HasForeignKey(rt => rt.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

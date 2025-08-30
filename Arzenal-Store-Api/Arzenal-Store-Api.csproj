@@ -11,10 +11,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Arzenal-Store-Shared-Dtos" Version="1.0.1" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="FluentValidation" Version="12.0.0" />
     <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.15" />
+    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.15">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -34,9 +36,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="ArzenalStore.Shared.Dtos">
-      <HintPath>..\..\Arzenal-Store-Shared-Dtos\Arzenal-Store-Shared-Dtos\bin\Debug\net8.0\Arzenal-Store-Shared-Dtos.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\..\Arzenal-Store-Shared-Dtos\Arzenal-Store-Shared-Dtos\Arzenal-Store-Shared-Dtos.csproj" />
   </ItemGroup>
+
 
 </Project>

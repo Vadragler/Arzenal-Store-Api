@@ -1,6 +1,4 @@
-﻿using TestApi.Infrastructure;
-
-namespace TestApi.Infrastructure
+﻿namespace TestArzenalStoreApi.Infrastructure
 {
     [CollectionDefinition("SharedDatabaseCollection")]
     public class SharedDatabaseCollection : ICollectionFixture<CustomWebApplicationFactory<Program>>
