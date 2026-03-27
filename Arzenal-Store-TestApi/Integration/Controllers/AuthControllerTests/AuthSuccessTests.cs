@@ -1,7 +1,13 @@
 ﻿using Arzenal.Dto.DTOs.AuthDto;
+using Arzenal.Store.Api.Domain.Models;
+using Arzenal.Store.Api.Infrastructure.Data;
+using Arzenal.Store.Api.TestIntegration.Infrastructure;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
-using Arzenal.Store.Api.TestIntegration.Infrastructure;
+using Xunit.Abstractions;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AuthControllerTests
 {
@@ -9,12 +15,13 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AuthControll
     {
         private readonly CustomWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
-
-        public AuthSuccessTests(CustomWebApplicationFactory<Program> factory)
+        private readonly ITestOutputHelper _output;
+        public AuthSuccessTests(CustomWebApplicationFactory<Program> factory, ITestOutputHelper output)
         {
             _factory = factory;
             _client = _factory.CreateAuthenticatedClient();
-            
+            _output = output;
+
         }
 
         // ------------------- REGISTER -------------------
@@ -86,6 +93,59 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AuthControll
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, refreshResponse.StatusCode);
+        }
+
+        [Fact]
+        public async Task Authenticate_Should_Rotate_ExpiredToken_Only()
+        {
+            // Arrange
+            var request = new LoginRequestDto
+            {
+                Email = "existing@example.com",
+                Password = "hashed-password",
+                DeviceName = "TEST-DEVICE-EXPIRED",
+                Fingerprint = "Fingerprint-EXPIRED"
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync("api/auth/login", request);
+
+            // Assert HTTP
+            response.EnsureSuccessStatusCode();
+
+            using var scope = _factory.Services.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+
+            // 🔥 récupérer le user depuis la DB
+            var user = await dbContext.Users
+                .FirstAsync(u => u.Email == request.Email);
+
+            var tokens = await dbContext.RefreshTokens
+                .IgnoreQueryFilters()
+                .Where(rt =>
+                    rt.DeviceName == request.DeviceName &&
+                    rt.Fingerprint == request.Fingerprint)
+                .ToListAsync();
+
+            var allTokens = await dbContext.RefreshTokens
+                .Where(rt => rt.UserId == user.Id)
+                .ToListAsync();
+
+            foreach (var t in allTokens)
+            {
+                _output.WriteLine($"DB => Device: '{t.DeviceName}' | Fingerprint: '{t.Fingerprint}'");
+            }
+
+            _output.WriteLine($"DTO => Device: '{request.DeviceName}' | Fingerprint: '{request.Fingerprint}'");
+
+            // ✅ Vérifie qu'il n'y a qu'un seul token
+            Assert.Single(tokens);
+
+            // ✅ Vérifie qu'il a été remplacé
+            Assert.NotEqual("expired-refresh-token", tokens[0].Token);
+
+            // ✅ Vérifie qu'il est valide maintenant
+            Assert.True(tokens[0].ExpiresAt > DateTime.UtcNow);
         }
 
         // ------------------- REFRESH -------------------

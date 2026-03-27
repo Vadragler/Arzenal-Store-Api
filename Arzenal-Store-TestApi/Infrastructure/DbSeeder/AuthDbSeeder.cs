@@ -32,6 +32,19 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure.DbSeeder
                 IsRevoked = false,
                 Type = "Chrome"
             });
+            db.RefreshTokens.Add(new RefreshToken
+            {
+                Id = Guid.Parse("f1e2d3c4-b5a6-7890-1234-abcdef123456"),
+                UserId = user.Id,
+                Token = "expired-refresh-token",
+                Fingerprint = "Fingerprint-EXPIRED",
+                CreatedByIp = "127.0.0.1",
+                DeviceName = "TEST-DEVICE-EXPIRED",
+                ExpiresAt = now.AddDays(-1),
+                CreatedAt = now.AddDays(-31),
+                IsRevoked = false,
+                Type = "Chrome"
+            });
             db.InviteTokens.Add(new InviteToken
             {
                 Email = "test@exemple.com",

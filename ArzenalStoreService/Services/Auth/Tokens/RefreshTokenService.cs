@@ -38,7 +38,19 @@ namespace Arzenal.Store.Api.Service.Services.Auth.Tokens
                 Type = browser,
             };
 
-            _dbContext.RefreshTokens.Add(refreshToken);
+            var existingToken = await _dbContext.RefreshTokens
+                .Where(t => t.UserId == dto.UserId &&
+                            t.DeviceName == dto.DeviceName)
+                .OrderByDescending(t => t.CreatedAt)
+                .FirstOrDefaultAsync();
+            if (existingToken == null)
+                _dbContext.RefreshTokens.Add(refreshToken);
+            else 
+            {                 
+                existingToken.Token = refreshToken.Token;
+                existingToken.ExpiresAt = refreshToken.ExpiresAt;
+                existingToken.IsRevoked = false;
+            }
             await _dbContext.SaveChangesAsync();
 
             return new RefreshTokenCookieData

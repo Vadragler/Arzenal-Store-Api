@@ -1,14 +1,15 @@
-﻿using Arzenal.Store.Api.Service.Interfaces;
+﻿using Arzenal.Dto.DTOs.AuthDto;
 using Arzenal.Store.Api.Domain.Models;
 using Arzenal.Store.Api.Domain.Models.Requests;
+using Arzenal.Store.Api.Infrastructure.Data;
 using Arzenal.Store.Api.Service.Exceptions;
+using Arzenal.Store.Api.Service.Interfaces;
 using Arzenal.Store.Api.Service.Services.Auth;
-using Arzenal.Dto.DTOs.AuthDto;
+using Arzenal.Store.Api.Service.Services.Auth.Passwords;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Moq;
-using Arzenal.Store.Api.Service.Services.Auth.Passwords;
-using Arzenal.Store.Api.Infrastructure.Data;
 
 namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
 {
@@ -28,7 +29,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             _jwtServiceMock = new Mock<IJwtService>();
             _passwordServiceMock = new Mock<IPasswordService>();
             _cookieServiceMock = new Mock<ICookieService>();
-            _jwtCookieServiceMock = new Mock<IJwtCookieService>();   
+            _jwtCookieServiceMock = new Mock<IJwtCookieService>();
         }
 
         private AuthDbContext GetDbContext()
@@ -107,7 +108,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
         {
             PasswordService passwordhash = new PasswordService();
             using var db = GetDbContext();
-            var invite = new InviteToken {Email= "test@test.com", Token = "token123", Used = false, ExpiresAt = DateTime.UtcNow.AddMinutes(10) };
+            var invite = new InviteToken { Email = "test@test.com", Token = "token123", Used = false, ExpiresAt = DateTime.UtcNow.AddMinutes(10) };
             db.InviteTokens.Add(invite);
             db.Users.Add(new User { Email = "test@test.com", Username = "other", PasswordHash = passwordhash.Hash("pass") });
             await db.SaveChangesAsync();
@@ -272,6 +273,67 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             await authService.LogoutAsync(contextMock);
 
             Assert.Empty(db.RefreshTokens.Where(rt => rt.UserId == userId && rt.Token == "tok"));
+        }
+
+
+        [Fact]
+        public async Task AuthenticateAsync_Should_Rotate_ExistingToken()
+        {
+            // Arrange
+            using var db = GetDbContext();
+            var user = new User { Id = Guid.NewGuid(),Username="test", Email = "a@b.com", PasswordHash = "hashed" };
+            await db.Users.AddAsync(user);
+
+            var existingToken = new RefreshToken
+            {
+                UserId = user.Id,
+                DeviceName = "TestDevice",
+                Fingerprint = "FP123",
+                Token = "old-token",
+                ExpiresAt = DateTime.UtcNow.AddDays(-1), // token expiré
+                CreatedAt = DateTime.UtcNow.AddDays(-31),
+                IsRevoked = false
+            };
+            await db.RefreshTokens.AddAsync(existingToken);
+            await db.SaveChangesAsync();
+
+            var dto = new CreateRefreshTokenDto
+            {
+                DeviceName = "TestDevice",
+                Fingerprint = "FP123",
+                UserId = user.Id,
+                UserAgent = "TestAgent",
+                CreatedByIp = "127.0.0.1"
+            };
+
+            var mockResponse = new DefaultHttpContext().Response;
+
+            var passwordServiceMock = new Mock<IPasswordService>();
+            passwordServiceMock.Setup(p => p.Verify("pass", "hashed")).Returns(true);
+
+            var jwtMock = new Mock<IJwtService>();
+            jwtMock.Setup(j => j.GenerateJwtTokenAsync(user.Id, It.IsAny<List<string>>())).ReturnsAsync("accessToken");
+
+            var tokenServiceMock = new Mock<IRefreshTokenService>();
+            tokenServiceMock.Setup(t => t.GenerateRefreshToken(It.IsAny<CreateRefreshTokenDto>()))
+                .ReturnsAsync(new RefreshTokenCookieData { Token = "refreshToken", UserId = user.Id });
+            var authService = new AuthService(
+               db,
+               tokenServiceMock.Object,
+               jwtMock.Object,
+               passwordServiceMock.Object,
+               Mock.Of<ICookieService>(),
+               Mock.Of<IJwtCookieService>()
+           );
+
+            // Act
+            var (accessToken, refreshToken) = await authService.AuthenticateAsync(mockResponse, user.Email, "pass", dto);
+
+            // Assert
+            var tokenInDb = await db.RefreshTokens.FirstOrDefaultAsync(rt => rt.UserId == user.Id && rt.DeviceName == "TestDevice");
+            Assert.NotNull(tokenInDb);
+            Assert.Equal(refreshToken, tokenInDb!.Token); // le token en DB a été mis à jour
+            Assert.NotEqual("old-token", tokenInDb.Token); // il n'est plus l'ancien
         }
     }
 }
