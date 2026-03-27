@@ -1,13 +1,21 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.13.35931.197
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11222.15
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arzenal-Store-Api", "Arzenal-Store-Api\Arzenal-Store-Api.csproj", "{60A32FEC-875D-657F-F1DC-12A2B28375EC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arzenal.Store.Api.TestIntegration", "Arzenal-Store-TestApi\Arzenal.Store.Api.TestIntegration.csproj", "{D3AC9B40-03C0-6F9F-EBBC-19C5699D916B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test-Arzenal-Store-Api", "Arzenal-Store-TestApi\Test-Arzenal-Store-Api.csproj", "{D3AC9B40-03C0-6F9F-EBBC-19C5699D916B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arzenal.Store.Api", "ArzenalStoreApi\Arzenal.Store.Api.csproj", "{2C8D7C5D-887D-C6AD-C569-C9B97FBE9DF5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arzenal-Store-Shared-Dtos", "..\Arzenal-Store-Shared-Dtos\Arzenal-Store-Shared-Dtos\Arzenal-Store-Shared-Dtos.csproj", "{E4ACF419-C139-147F-9B3F-0E907E890D21}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arzenal.Store.Api.Service", "ArzenalStoreService\Arzenal.Store.Api.Service.csproj", "{A64E6621-4A87-FFA0-0E6D-C1EFE747DEE4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arzenal.Store.Api.Infrastructure", "ArzenalStoreInfrastructure\Arzenal.Store.Api.Infrastructure.csproj", "{40797EF4-CFA9-4DFB-BAA8-78A29C508349}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arzenal.Store.Api.Domain", "ArzenalStoreDomain\Arzenal.Store.Api.Domain.csproj", "{39CBF1E3-EEA6-4E45-9990-639271216558}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arzenal.Store.Api.TestUnitaire", "ArzenalStoreApi.TestUnitaire\Arzenal.Store.Api.TestUnitaire.csproj", "{4463DA1E-E9F6-40BA-B444-0BBE8DF6456F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arzenal.Dto", "..\Arzenal-Store-Shared-Dtos\Arzenal-Store-Shared-Dtos\Arzenal.Dto.csproj", "{ABE06B9C-39F2-D7BA-D7B8-87AE78FB190F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,18 +23,34 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{60A32FEC-875D-657F-F1DC-12A2B28375EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{60A32FEC-875D-657F-F1DC-12A2B28375EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{60A32FEC-875D-657F-F1DC-12A2B28375EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{60A32FEC-875D-657F-F1DC-12A2B28375EC}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D3AC9B40-03C0-6F9F-EBBC-19C5699D916B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D3AC9B40-03C0-6F9F-EBBC-19C5699D916B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D3AC9B40-03C0-6F9F-EBBC-19C5699D916B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D3AC9B40-03C0-6F9F-EBBC-19C5699D916B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E4ACF419-C139-147F-9B3F-0E907E890D21}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E4ACF419-C139-147F-9B3F-0E907E890D21}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E4ACF419-C139-147F-9B3F-0E907E890D21}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E4ACF419-C139-147F-9B3F-0E907E890D21}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2C8D7C5D-887D-C6AD-C569-C9B97FBE9DF5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C8D7C5D-887D-C6AD-C569-C9B97FBE9DF5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C8D7C5D-887D-C6AD-C569-C9B97FBE9DF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C8D7C5D-887D-C6AD-C569-C9B97FBE9DF5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A64E6621-4A87-FFA0-0E6D-C1EFE747DEE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A64E6621-4A87-FFA0-0E6D-C1EFE747DEE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A64E6621-4A87-FFA0-0E6D-C1EFE747DEE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A64E6621-4A87-FFA0-0E6D-C1EFE747DEE4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{40797EF4-CFA9-4DFB-BAA8-78A29C508349}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40797EF4-CFA9-4DFB-BAA8-78A29C508349}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40797EF4-CFA9-4DFB-BAA8-78A29C508349}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40797EF4-CFA9-4DFB-BAA8-78A29C508349}.Release|Any CPU.Build.0 = Release|Any CPU
+		{39CBF1E3-EEA6-4E45-9990-639271216558}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39CBF1E3-EEA6-4E45-9990-639271216558}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{39CBF1E3-EEA6-4E45-9990-639271216558}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{39CBF1E3-EEA6-4E45-9990-639271216558}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4463DA1E-E9F6-40BA-B444-0BBE8DF6456F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4463DA1E-E9F6-40BA-B444-0BBE8DF6456F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4463DA1E-E9F6-40BA-B444-0BBE8DF6456F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4463DA1E-E9F6-40BA-B444-0BBE8DF6456F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABE06B9C-39F2-D7BA-D7B8-87AE78FB190F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABE06B9C-39F2-D7BA-D7B8-87AE78FB190F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABE06B9C-39F2-D7BA-D7B8-87AE78FB190F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABE06B9C-39F2-D7BA-D7B8-87AE78FB190F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

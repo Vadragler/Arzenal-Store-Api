@@ -6,6 +6,7 @@ obj/
 *.suo
 *.userosscache
 *.sln.docstates
+*.config
 
 # === Logs ===
 *.log
@@ -35,9 +36,15 @@ coverage/
 *.pid
 *.tar
 docker-compose.override.yml
+*Dockerfile
+*.dockerignore
 
 
 # === Others ===
 *.db
 *.sqlite
 *.pdb
+/.dockerignore
+/.github/upgrades/scenarios/new-dotnet-version_4a60c6
+/Docker
+/tmp_backup_CustomWebApplicationFactory_original.txt
