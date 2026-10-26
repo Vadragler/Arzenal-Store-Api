@@ -1,4 +1,5 @@
-﻿using Arzenal.Store.Api.Domain.Models.Requests;
+using Arzenal.Store.Api.Domain.Models.Requests;
+using Arzenal.Store.Api.Service.Interfaces;
 using Arzenal.Store.Api.Service.Services.Auth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -7,185 +8,87 @@ using Moq;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Text.Json;
 
-namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
+namespace ArzenalStoreApi.TestUnitaire.Unit.Services;
+
+public class JwtCookieServiceTests
 {
-    public class JwtCookieServiceTests
+    private static IConfiguration CreateConfiguration() => new ConfigurationBuilder()
+        .AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Jwt:SecretKey"] = "VerySecretKey1234567890151514464419184985851841844148441849148949",
+            ["Jwt:Issuer"] = "TestIssuer"
+        })
+        .Build();
+
+    private static IRefreshTokenHasher CreateHasher()
     {
-        private readonly Mock<IConfiguration> _configMock;
-        private readonly Mock<IHttpContextAccessor> _httpContextAccessorMock;
+        var hasher = new Mock<IRefreshTokenHasher>();
+        hasher.Setup(service => service.Hash(It.IsAny<string>()))
+            .Returns((string token) => $"hash:{token}");
+        return hasher.Object;
+    }
 
-        public JwtCookieServiceTests()
-        {
-            _configMock = new Mock<IConfiguration>();
-            _httpContextAccessorMock = new Mock<IHttpContextAccessor>();
+    private static JwtCookieService CreateService(HttpContext? context, ICookieService? cookies = null) => new(
+        CreateConfiguration(),
+        Mock.Of<IHttpContextAccessor>(accessor => accessor.HttpContext == context),
+        cookies ?? Mock.Of<ICookieService>(),
+        CreateHasher());
 
-            // Setup configuration pour JWT
-            _configMock.Setup(c => c["Jwt:SecretKey"]).Returns("VerySecretKey1234567890151514464419184985851841844148441849148949");
-            _configMock.Setup(c => c["Jwt:Issuer"]).Returns("TestIssuer");
-            _configMock.Setup(c => c["Jwt:Audience"]).Returns("TestAudience");
-        }
+    [Fact]
+    public void GetUserIdFromCookie_ReturnsEmpty_WhenThereIsNoContextOrCookie()
+    {
+        Assert.Equal(Guid.Empty, CreateService(null).GetUserIdFromCookie());
+        Assert.Equal(Guid.Empty, CreateService(new DefaultHttpContext()).GetUserIdFromCookie());
+    }
 
-        [Fact]
-        public void GetUserIdFromCookie_NoHttpContext_ReturnsEmptyGuid()
-        {
-            // Arrange
-            _httpContextAccessorMock.Setup(a => a.HttpContext).Returns((HttpContext)null!);
-            var service = new JwtCookieService(_configMock.Object, _httpContextAccessorMock.Object);
+    [Fact]
+    public void GetUserIdFromCookie_ReturnsTheValidatedJwtSubject()
+    {
+        var userId = Guid.NewGuid();
+        var key = Encoding.UTF8.GetBytes("VerySecretKey1234567890151514464419184985851841844148441849148949");
+        var jwt = new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
+            issuer: "TestIssuer",
+            claims: [new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(JwtRegisteredClaimNames.Aud, "web")],
+            expires: DateTime.UtcNow.AddMinutes(5),
+            signingCredentials: new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)));
+        var context = new DefaultHttpContext();
+        context.Request.Headers.Cookie = $"authToken={jwt}";
 
-            // Act
-            var result = service.GetUserIdFromCookie();
+        Assert.Equal(userId, CreateService(context).GetUserIdFromCookie());
+    }
 
-            // Assert
-            Assert.Equal(Guid.Empty, result);
-        }
+    [Fact]
+    public void GetUserIdFromCookie_RejectsAnInvalidJwt()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers.Cookie = "authToken=invalid";
 
-        [Fact]
-        public void GetUserIdFromCookie_NoCookie_ReturnsEmptyGuid()
-        {
-            // Arrange
-            var contextMock = new DefaultHttpContext();
-            _httpContextAccessorMock.Setup(a => a.HttpContext).Returns(contextMock);
+        Assert.Throws<UnauthorizedAccessException>(() => CreateService(context).GetUserIdFromCookie());
+    }
 
-            var service = new JwtCookieService(_configMock.Object, _httpContextAccessorMock.Object);
+    [Fact]
+    public void GetCurrentCookie_UsesTheHashInsteadOfComparingRawTokens()
+    {
+        var context = new DefaultHttpContext();
+        var cookies = new Mock<ICookieService>();
+        cookies.Setup(service => service.GetRefreshToken(It.IsAny<HttpRequest>()))
+            .Returns(new RefreshTokenCookieData { Token = "raw-token" });
 
-            // Act
-            var result = service.GetUserIdFromCookie();
+        var service = CreateService(context, cookies.Object);
 
-            // Assert
-            Assert.Equal(Guid.Empty, result);
-        }
+        Assert.True(service.GetCurrentCookie("hash:raw-token"));
+        Assert.False(service.GetCurrentCookie("hash:other-token"));
+    }
 
-        [Fact]
-        public void GetUserIdFromCookie_InvalidToken_ThrowsUnauthorized()
-        {
-            var cookiesMock = new Mock<IRequestCookieCollection>();
-            cookiesMock.Setup(c => c["authToken"]).Returns("invalid-token");
+    [Fact]
+    public void GetCurrentCookie_ReturnsFalseWithoutARefreshCookie()
+    {
+        var context = new DefaultHttpContext();
+        var cookies = new Mock<ICookieService>();
+        cookies.Setup(service => service.GetRefreshToken(It.IsAny<HttpRequest>()))
+            .Returns((RefreshTokenCookieData?)null);
 
-            var contextMock = new Mock<HttpContext>();
-            contextMock.Setup(c => c.Request.Cookies).Returns(cookiesMock.Object);
-
-            _httpContextAccessorMock.Setup(a => a.HttpContext).Returns(contextMock.Object);
-
-            var service = new JwtCookieService(_configMock.Object, _httpContextAccessorMock.Object);
-
-             Assert.Throws<UnauthorizedAccessException>(
-                () => service.GetUserIdFromCookie()
-            );
-        }
-
-
-
-
-        [Fact]
-        public void GetUserIdFromCookie_ReturnsUserId_WhenTokenIsValid()
-        {
-            // Arrange 
-            var userId = Guid.NewGuid();
-
-            var key = Encoding.UTF8.GetBytes("VerySecretKey1234567890151514464419184985851841844148441849148949");
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var token = tokenHandler.WriteToken(new JwtSecurityToken(
-                issuer: "TestIssuer",
-                claims: new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(JwtRegisteredClaimNames.Aud,"web") },
-                expires: DateTime.UtcNow.AddHours(1),
-                signingCredentials: new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
-            ));
-
-            var cookiesMock = new Mock<IRequestCookieCollection>();
-            cookiesMock.Setup(c => c["authToken"]).Returns(token);
-
-            var contextMock = new Mock<HttpContext>();
-            contextMock.Setup(c => c.Request.Cookies).Returns(cookiesMock.Object);
-
-            _httpContextAccessorMock.Setup(a => a.HttpContext).Returns(contextMock.Object);
-
-            var service = new JwtCookieService(_configMock.Object, _httpContextAccessorMock.Object);
-
-            // Act 
-            var result = service.GetUserIdFromCookie();
-
-            // Assert 
-            Assert.Equal(userId, result);
-        }
-
-        [Fact]
-        public void GetCurrentCookie_NoHttpContext_ReturnsFalse()
-        {
-            // Arrange
-            _httpContextAccessorMock.Setup(a => a.HttpContext).Returns((HttpContext)null!);
-            var service = new JwtCookieService(_configMock.Object, _httpContextAccessorMock.Object);
-
-            // Act
-            var result = service.GetCurrentCookie("anytoken");
-
-            // Assert
-            Assert.False(result);
-        }
-
-        [Fact]
-        public void GetCurrentCookie_NoCookie_ReturnsFalse()
-        {
-            // Arrange
-            var contextMock = new DefaultHttpContext();
-            _httpContextAccessorMock.Setup(a => a.HttpContext).Returns(contextMock);
-
-            var service = new JwtCookieService(_configMock.Object, _httpContextAccessorMock.Object);
-
-            // Act
-            var result = service.GetCurrentCookie("anytoken");
-
-            // Assert
-            Assert.False(result);
-        }
-
-        [Fact]
-        public void GetCurrentCookie_ReturnsFalse_WhenTokenDoesNotMatch()
-        {
-            // Arrange 
-            var cookieData = new RefreshTokenCookieData { Token = "othertoken" };
-            var encoded = Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(cookieData));
-
-            var cookiesMock = new Mock<IRequestCookieCollection>();
-            cookiesMock.Setup(c => c["refreshToken"]).Returns(encoded);
-
-            var contextMock = new Mock<HttpContext>();
-            contextMock.Setup(c => c.Request.Cookies).Returns(cookiesMock.Object);
-
-            _httpContextAccessorMock.Setup(a => a.HttpContext).Returns(contextMock.Object);
-
-            var service = new JwtCookieService(_configMock.Object, _httpContextAccessorMock.Object);
-
-            // Act 
-            var result = service.GetCurrentCookie("mytoken");
-
-            // Assert 
-            Assert.False(result);
-        }
-
-        [Fact]
-        public void GetCurrentCookie_ReturnsTrue_WhenTokenMatches()
-        {
-            // Arrange 
-            var cookieData = new RefreshTokenCookieData { Token = "mytoken" };
-            var encoded = Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(cookieData));
-
-            var cookiesMock = new Mock<IRequestCookieCollection>();
-            cookiesMock.Setup(c => c["refreshToken"]).Returns(encoded);
-
-            var contextMock = new Mock<HttpContext>();
-            contextMock.Setup(c => c.Request.Cookies).Returns(cookiesMock.Object);
-
-            _httpContextAccessorMock.Setup(a => a.HttpContext).Returns(contextMock.Object);
-
-            var service = new JwtCookieService(_configMock.Object, _httpContextAccessorMock.Object);
-
-            // Act 
-            var result = service.GetCurrentCookie("mytoken");
-
-            // Assert 
-            Assert.True(result);
-        }
+        Assert.False(CreateService(context, cookies.Object).GetCurrentCookie("hash:any"));
     }
 }

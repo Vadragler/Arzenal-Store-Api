@@ -1,6 +1,5 @@
 ﻿using Arzenal.Store.Api.Domain.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using OperatingSystem = Arzenal.Store.Api.Domain.Models.OperatingSystem;
 
 namespace ArzenalStoreInfrastructure.Data
@@ -15,20 +14,11 @@ namespace ArzenalStoreInfrastructure.Data
             public DbSet<AppLanguage> AppLanguages { get; set; }
             public DbSet<AppOperatingSystem> AppOperatingSystems { get; set; }
             public DbSet<AppTag> AppTags { get; set; }
+            public DbSet<AppArtifact> AppArtifacts { get; set; }
             public DbSet<OperatingSystem> OperatingSystems { get; set; }
             public DbSet<Language> Languages { get; set; }
             public DbSet<Tag> Tags { get; set; }
 
-
-            protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-            {
-                if (!optionsBuilder.IsConfigured)
-                {
-                    optionsBuilder
-                        .LogTo(Console.WriteLine, LogLevel.Information) // Journalisation des requêtes SQL
-                        .EnableSensitiveDataLogging(); // Active les données sensibles dans les journaux (ex. paramètres des requêtes)
-                }
-            }
 
             protected override void OnModelCreating(ModelBuilder modelBuilder)
             {
@@ -38,6 +28,7 @@ namespace ArzenalStoreInfrastructure.Data
                 modelBuilder.Entity<App>().ToTable("Apps");
                 modelBuilder.Entity<AppLanguage>().ToTable("AppLanguages");
                 modelBuilder.Entity<AppTag>().ToTable("AppTags");
+                modelBuilder.Entity<AppArtifact>().ToTable("AppArtifacts");
                 modelBuilder.Entity<AppOperatingSystem>().ToTable("AppOperatingSystems");
                 modelBuilder.Entity<OperatingSystem>().ToTable("OperatingSystems");
                 modelBuilder.Entity<Language>().ToTable("Languages");
@@ -48,10 +39,11 @@ namespace ArzenalStoreInfrastructure.Data
                 ConfigureAppLanguage(modelBuilder);
                 ConfigureAppTag(modelBuilder);
                 ConfigureAppOperatingSystem(modelBuilder);
+                ConfigureAppArtifact(modelBuilder);
 
             }
 
-            private void ConfigureApp(ModelBuilder modelBuilder)
+            private static void ConfigureApp(ModelBuilder modelBuilder)
             {
                 modelBuilder.Entity<App>(entity =>
                 {
@@ -76,7 +68,7 @@ namespace ArzenalStoreInfrastructure.Data
                 });
             }
 
-            private void ConfigureAppLanguage(ModelBuilder modelBuilder)
+            private static void ConfigureAppLanguage(ModelBuilder modelBuilder)
             {
                 modelBuilder.Entity<AppLanguage>()
                     .HasKey(al => new { al.AppId, al.LanguageId });
@@ -90,7 +82,7 @@ namespace ArzenalStoreInfrastructure.Data
                     .HasForeignKey(al => al.LanguageId);
             }
 
-            private void ConfigureAppTag(ModelBuilder modelBuilder)
+            private static void ConfigureAppTag(ModelBuilder modelBuilder)
             {
                 modelBuilder.Entity<AppTag>()
                     .HasKey(at => new { at.AppId, at.TagId });
@@ -104,7 +96,7 @@ namespace ArzenalStoreInfrastructure.Data
                     .HasForeignKey(at => at.TagId);
             }
 
-            private void ConfigureAppOperatingSystem(ModelBuilder modelBuilder)
+            private static void ConfigureAppOperatingSystem(ModelBuilder modelBuilder)
             {
                 modelBuilder.Entity<AppOperatingSystem>()
                     .HasKey(ao => new { ao.AppId, ao.OSId });
@@ -116,6 +108,27 @@ namespace ArzenalStoreInfrastructure.Data
                     .HasOne(ao => ao.OperatingSystem)
                     .WithMany(os => os.AppOperatingSystems)
                     .HasForeignKey(ao => ao.OSId);
+            }
+
+            private static void ConfigureAppArtifact(ModelBuilder modelBuilder)
+            {
+                modelBuilder.Entity<AppArtifact>(entity =>
+                {
+                    entity.HasKey(artifact => artifact.Id);
+                    entity.Property(artifact => artifact.Type).IsRequired().HasMaxLength(16);
+                    entity.Property(artifact => artifact.Locator).IsRequired().HasMaxLength(160);
+                    entity.Property(artifact => artifact.Version).HasMaxLength(64);
+                    entity.Property(artifact => artifact.Platform).HasMaxLength(16);
+                    entity.Property(artifact => artifact.OriginalFileName).IsRequired().HasMaxLength(255);
+                    entity.Property(artifact => artifact.RelativePath).IsRequired().HasMaxLength(512);
+                    entity.Property(artifact => artifact.ContentType).IsRequired().HasMaxLength(128);
+                    entity.Property(artifact => artifact.UploadedAt).HasColumnType("datetime(6)");
+                    entity.HasIndex(artifact => new { artifact.AppId, artifact.Type, artifact.Locator }).IsUnique();
+                    entity.HasOne(artifact => artifact.App)
+                        .WithMany(app => app.Artifacts)
+                        .HasForeignKey(artifact => artifact.AppId)
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
             }
 
             public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

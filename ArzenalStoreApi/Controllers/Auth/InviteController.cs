@@ -1,6 +1,7 @@
 ﻿using Arzenal.Store.Api.Service.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace ArzenalStoreApi.Controllers.Auth
@@ -26,6 +27,7 @@ namespace ArzenalStoreApi.Controllers.Auth
         /// </returns>
         [AllowAnonymous]
         [HttpGet("validate")]
+        [EnableRateLimiting("invite")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> ValidateToken([FromQuery] string token)
@@ -45,6 +47,7 @@ namespace ArzenalStoreApi.Controllers.Auth
         /// </returns>
         [Authorize(Policy = "Admin")]
         [HttpPost("generate")]
+        [EnableRateLimiting("invite")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -63,6 +66,7 @@ namespace ArzenalStoreApi.Controllers.Auth
         /// </returns>
         [AllowAnonymous]
         [HttpPost("use")]
+        [EnableRateLimiting("invite")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> UseToken([FromQuery] string token)

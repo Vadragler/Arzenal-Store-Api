@@ -4,28 +4,55 @@ using Arzenal.Store.Api.Infrastructure.Data;
 using Arzenal.Store.Api.TestIntegration.Infrastructure.DbSeeder;
 using ArzenalStoreInfrastructure.Configurations;
 using ArzenalStoreInfrastructure.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
 using MySqlConnector;
-using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 using System.Net;
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
+using Testcontainers.MySql;
 
 namespace Arzenal.Store.Api.TestIntegration.Infrastructure
 {
     public class CustomWebApplicationFactory<TStartup> : WebApplicationFactory<TStartup> where TStartup : class
     {
-        private string? _dbName;
+        private const string MySqlImage = "mysql:8.0.33";
+        private const string JwtSecret = "integration-jwt-secret-must-be-at-least-thirty-two-characters";
+        private const string JwtIssuer = "arzenal-integration";
+        private const string AppLoginJwtSecret = "integration-app-jwt-secret-must-be-at-least-thirty-two-characters";
+        private const string AppLoginJwtIssuer = "arzenal-integration-app";
+
+        private readonly MySqlContainer _databaseContainer;
+        private readonly string _dbName;
+        private readonly string _dbAuthName;
         private string? _connectionString;
-        private string? _dbAuthName;
         private string? _connectionAuthString;
+        private bool _containerStarted;
         public string StoragePath { get; private set; } = Path.Combine(Path.GetTempPath(), "ArzenalTest", Guid.NewGuid().ToString());
 
         public new IServiceProvider Services => Server.Services;
+
+        public CustomWebApplicationFactory()
+        {
+            // MySQL limite les noms de verrous à 64 caractères. EF Core dérive
+            // le nom du verrou à partir du nom de la base, donc ce suffixe doit rester court.
+            var suffix = Guid.NewGuid().ToString("N")[..16];
+            _dbName = $"arzenal_test_{suffix}";
+            _dbAuthName = $"arzenal_auth_test_{suffix}";
+            _databaseContainer = new MySqlBuilder(MySqlImage)
+                .WithDatabase(_dbName)
+                .WithUsername("root")
+                .WithPassword($"Test-{Guid.NewGuid():N}")
+                .Build();
+        }
 
         protected override IHost CreateHost(IHostBuilder builder)
         {
@@ -35,6 +62,22 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Jwt:SecretKey"] = JwtSecret,
+                    ["Jwt:Issuer"] = JwtIssuer,
+                    ["Jwt-App-Login:SecretKey"] = AppLoginJwtSecret,
+                    ["Jwt-App-Login:Issuer"] = AppLoginJwtIssuer,
+                    ["RefreshToken:HashKey"] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                    ["ConnectionStrings:StoreConnection"] = "Server=localhost;Database=placeholder;User Id=placeholder;Password=placeholder;",
+                    ["ConnectionStrings:AuthConnection"] = "Server=localhost;Database=placeholder;User Id=placeholder;Password=placeholder;",
+                    ["AppLogin:AllowedAppIds:0"] = "ArzenalStoreManager",
+                    ["AppLogin:AllowedAppIds:1"] = "integration-test-app"
+                });
+            });
+
             builder.ConfigureServices(services =>
             {
                 // Supprime DbContext existant
@@ -52,30 +95,14 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
                 });
 
                 MapperMocksFactory.SetupDefaultMapperMocks(services);
+                ConfigureJwtForTests(services);
 
-
-
-                // 🔹 Création d'une base unique
-                // Use shorter names to avoid exceeding MySQL lock name length (max 64 chars)
-                var shortSuffix = Guid.NewGuid().ToString("N").Substring(0, 16);
-                _dbName = $"arzenal_test_{shortSuffix}";
-                _connectionString = $"Server=localhost;Port=3306;Database={_dbName};User=root;Password=!PKdM?MJR9wEfQa;";
-
-                _dbAuthName = $"arzenal_auth_test_{shortSuffix}";
-                _connectionAuthString = $"Server=localhost;Port=3306;Database={_dbAuthName};User=root;Password=!PKdM?MJR9wEfQa;";
-
-                // Créer la base
-                using var masterConn = new MySqlConnection("Server=localhost;Port=3306;User=root;Password=!PKdM?MJR9wEfQa;");
-                masterConn.Open();
-                using var createCmd = new MySqlCommand($"CREATE DATABASE `{_dbName}`;", masterConn);
-                using var createAuthCmd = new MySqlCommand($"CREATE DATABASE `{_dbAuthName}`;", masterConn);
-                createAuthCmd.ExecuteNonQuery();
-                createCmd.ExecuteNonQuery();
+                StartDatabaseContainer();
 
                 services.AddDbContext<ApplicationDbContext>(options =>
-                    options.UseMySql(_connectionString, new MySqlServerVersion(new Version(8,0,33))));
+                    options.UseMySql(_connectionString, new MySqlServerVersion(new Version(8, 0, 33))));
                 services.AddDbContext<AuthDbContext>(options =>
-                    options.UseMySql(_connectionAuthString, new MySqlServerVersion(new Version(8,0,33))));
+                    options.UseMySql(_connectionAuthString, new MySqlServerVersion(new Version(8, 0, 33))));
 
                 // Seed DB
                 var sp = services.BuildServiceProvider();
@@ -90,41 +117,92 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
             });
         }
 
+        private static void ConfigureJwtForTests(IServiceCollection services)
+        {
+            services.PostConfigure<JwtBearerOptions>("CookieJwt", options =>
+            {
+                options.TokenValidationParameters.IssuerSigningKey =
+                    new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtSecret));
+                options.TokenValidationParameters.ValidIssuer = JwtIssuer;
+                options.TokenValidationParameters.ValidAudiences = new[] { "web", "ArzenalStoreManager" };
+            });
+
+            services.PostConfigure<JwtBearerOptions>("HeaderJwt", options =>
+            {
+                options.TokenValidationParameters.IssuerSigningKey =
+                    new SymmetricSecurityKey(Encoding.UTF8.GetBytes(AppLoginJwtSecret));
+                options.TokenValidationParameters.ValidIssuer = AppLoginJwtIssuer;
+                options.TokenValidationParameters.ValidAudience = "app-login";
+            });
+        }
+
         protected override void Dispose(bool disposing)
         {
-            base.Dispose(disposing);
-
-            // Supprimer la base après le test
-            if (!string.IsNullOrEmpty(_dbName))
+            try
             {
-                using var masterConn = new MySqlConnection("Server=localhost;Port=3306;User=root;Password=!PKdM?MJR9wEfQa;");
-                masterConn.Open();
-                using var dropCmd = new MySqlCommand($"DROP DATABASE IF EXISTS `{_dbName}`;", masterConn);
-                dropCmd.ExecuteNonQuery();
-                _dbName = null;
+                base.Dispose(disposing);
+            }
+            finally
+            {
+                if (disposing)
+                {
+                    DisposeContainer(_databaseContainer);
+                }
+            }
+        }
+
+        private void StartDatabaseContainer()
+        {
+            if (_containerStarted)
+            {
+                return;
             }
 
-            if (!string.IsNullOrEmpty(_dbAuthName))
+            try
             {
-                using var masterConn = new MySqlConnection("Server=localhost;Port=3306;User=root;Password=!PKdM?MJR9wEfQa;");
-                masterConn.Open();
-                using var dropCmd = new MySqlCommand($"DROP DATABASE IF EXISTS `{_dbAuthName}`;", masterConn);
-                dropCmd.ExecuteNonQuery();
-                _dbAuthName = null;
+                _databaseContainer.StartAsync().GetAwaiter().GetResult();
+                _connectionString = _databaseContainer.GetConnectionString();
+
+                var serverConnectionStringBuilder = new MySqlConnectionStringBuilder(_connectionString)
+                {
+                    Database = "mysql"
+                };
+
+                using var serverConnection = new MySqlConnection(serverConnectionStringBuilder.ConnectionString);
+                serverConnection.Open();
+
+                using var createAuthDatabaseCommand = new MySqlCommand($"CREATE DATABASE `{_dbAuthName}`;", serverConnection);
+                createAuthDatabaseCommand.ExecuteNonQuery();
+
+                _connectionAuthString = new MySqlConnectionStringBuilder(_connectionString)
+                {
+                    Database = _dbAuthName
+                }.ConnectionString;
+                _containerStarted = true;
             }
+            catch
+            {
+                DisposeContainer(_databaseContainer);
+                throw;
+            }
+        }
+
+        private static void DisposeContainer(MySqlContainer container)
+        {
+            container.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
 
 
         public HttpClient CreateAuthenticatedClient(string? userAgent="ArzenalStoreManager",string? token = null)
         {
             var factory = this;
-            var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+            var loginClient = factory.CreateClient(new WebApplicationFactoryClientOptions
             {
                 BaseAddress = factory.Server.BaseAddress,
-                HandleCookies = true // Laisser HttpClient gérer les cookies retournés par le serveur
+                HandleCookies = false
             });
-            client.DefaultRequestHeaders.Add("X-Forwarded-For", "127.0.0.1");
-            client.DefaultRequestHeaders.Add("User-Agent", userAgent);
+            loginClient.DefaultRequestHeaders.Add("X-Forwarded-For", $"10.0.{Random.Shared.Next(1, 255)}.{Random.Shared.Next(1, 255)}");
+            loginClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
 
             // On remplace le handler interne par un delegating handler qui ajoute les cookies
 
@@ -136,28 +214,45 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
                 DeviceName = "IntegrationTestDevice"
             };
 
-            var loginResponse = client.PostAsJsonAsync("api/auth/login", loginDto).Result;
+            var loginResponse = loginClient.PostAsJsonAsync("api/auth/login", loginDto).Result;
             if (!loginResponse.IsSuccessStatusCode)
             {
                 var body = loginResponse.Content.ReadAsStringAsync().Result;
                 throw new InvalidOperationException($"Login failed with {(int)loginResponse.StatusCode}: {body}");
             }
 
-            // Utilise seulement scheme + host + port pour SetCookies
-            var cookieContainer = new CookieContainer();
-            var cookies = loginResponse.Headers.GetValues("Set-Cookie");
-            foreach (var c in cookies)
+            var accessTokenCookie = loginResponse.Headers.GetValues("Set-Cookie")
+                .Select(setCookie => setCookie.Split(';', 2)[0])
+                .SingleOrDefault(cookie => cookie.StartsWith("authToken=", StringComparison.Ordinal));
+            if (accessTokenCookie is null)
+                throw new InvalidOperationException("Le login de test n'a pas retourné le cookie authToken.");
+
+            var accessToken = accessTokenCookie["authToken=".Length..];
+            ValidateAccessToken(accessToken);
+
+            var refreshTokenCookie = loginResponse.Headers.GetValues("Set-Cookie")
+                .Select(setCookie => setCookie.Split(';', 2)[0])
+                .SingleOrDefault(cookie => cookie.StartsWith("refreshToken=", StringComparison.Ordinal));
+            if (refreshTokenCookie is null)
             {
-                cookieContainer.SetCookies(factory.Server.BaseAddress!, c);
+                throw new InvalidOperationException("Le login de test n'a pas retourné le cookie refreshToken.");
             }
 
-            client.DefaultRequestHeaders.Add("Cookie", string.Join("; ", cookies));
-            if (token != null)
+            var client = new HttpClient(new CookieInjectingHandler(
+                accessToken,
+                refreshTokenCookie["refreshToken=".Length..],
+                token ?? accessToken,
+                "IntegrationTestFingerprint")
             {
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-            }
+                InnerHandler = factory.Server.CreateHandler()
+            })
+            {
+                BaseAddress = factory.Server.BaseAddress
+            };
 
-            client.DefaultRequestHeaders.Add("X-Device-Name", "IntegrationTestFingerprint");
+            client.DefaultRequestHeaders.Add("X-Forwarded-For", $"10.0.{Random.Shared.Next(1, 255)}.{Random.Shared.Next(1, 255)}");
+            client.DefaultRequestHeaders.Add("User-Agent", userAgent);
+            client.DefaultRequestHeaders.Add("X-Device-Name", "IntegrationTestDevice");
             client.DefaultRequestHeaders.Add("Fingerprint", "IntegrationTestFingerprint");
 
             // Ajoute un header X-App-Id par défaut pour les tests qui appellent les endpoints WPF
@@ -167,6 +262,30 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
             }
 
             return client;
+        }
+
+        private void ValidateAccessToken(string accessToken)
+        {
+            var configuration = Services.GetRequiredService<IConfiguration>();
+            var validationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:SecretKey"]!)),
+                ValidateIssuer = true,
+                ValidIssuer = configuration["Jwt:Issuer"],
+                ValidateAudience = true,
+                ValidAudiences = new[] { "web", "ArzenalStoreManager" },
+                ClockSkew = TimeSpan.Zero
+            };
+
+            try
+            {
+                new JwtSecurityTokenHandler().ValidateToken(accessToken, validationParameters, out _);
+            }
+            catch (Exception exception)
+            {
+                throw new InvalidOperationException("Le JWT émis par le login de test ne passe pas sa propre validation.", exception);
+            }
         }
 
 

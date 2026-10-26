@@ -82,7 +82,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Mapper
         public void UpdateCategoryFromDto_WithNullValue_HandlesGracefully()
         {
             // Arrange
-            var categorie = new Categorie { Id = Guid.Parse("d9b1f7c4-3f2a-4b6e-a2d1-8f5b7e9c2a1d"), Name = "OldCategory"};
+            var categorie = new Categorie { Id = Guid.Parse("d9b1f7c4-3f2a-4b6e-a2d1-8f5b7e9c2a1d"), Name = "OldCategory" };
             var dto = new UpdateCategorieDto { Name = null };
 
             // Act

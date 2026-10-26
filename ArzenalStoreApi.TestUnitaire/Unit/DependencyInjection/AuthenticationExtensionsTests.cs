@@ -1,11 +1,8 @@
-using System.Collections.Generic;
-using System.Linq;
+using ArzenalStoreApi.DependencyInjection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using ArzenalStoreApi.DependencyInjection;
-using Xunit;
 
 namespace ArzenalStoreApi.TestUnitaire.Unit.DependencyInjection
 {
@@ -17,9 +14,9 @@ namespace ArzenalStoreApi.TestUnitaire.Unit.DependencyInjection
             // Arrange
             var inMemory = new Dictionary<string, string?>
             {
-                ["Jwt:SecretKey"] = "test-secret-key-1234567890",
+                ["Jwt:SecretKey"] = "test-jwt-secret-must-be-at-least-thirty-two-characters",
                 ["Jwt:Issuer"] = "test-issuer",
-                ["Jwt-App-Login:SecretKey"] = "app-secret-key-1234567890",
+                ["Jwt-App-Login:SecretKey"] = "test-app-jwt-secret-must-be-at-least-thirty-two-characters",
                 ["Jwt-App-Login:Issuer"] = "app-issuer",
                 ["Jwt:ExpiryHours"] = "1"
             };
@@ -39,7 +36,7 @@ namespace ArzenalStoreApi.TestUnitaire.Unit.DependencyInjection
             // Assert: fallback policy requires authenticated user and role Admin
             Assert.NotNull(authOptions.FallbackPolicy);
             var fallbackReqTypeNames = authOptions.FallbackPolicy.Requirements.Select(r => r.GetType().Name).ToList();
-            Assert.Contains("RolesAuthorizationRequirement", fallbackReqTypeNames);
+            Assert.Contains("DenyAnonymousAuthorizationRequirement", fallbackReqTypeNames);
 
             var adminPolicy = authOptions.GetPolicy("Admin");
             Assert.NotNull(adminPolicy);

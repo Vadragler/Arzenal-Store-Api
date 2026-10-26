@@ -1,7 +1,8 @@
-﻿using Arzenal.Dto.DTOs.AccountDto;
+using Arzenal.Dto.DTOs.AccountDto;
+using Arzenal.Store.Api.TestIntegration.Infrastructure;
 using System.Net;
 using System.Net.Http.Json;
-using Arzenal.Store.Api.TestIntegration.Infrastructure;
+using System.Text.Json;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AccountControllerTests
 {
@@ -39,7 +40,6 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AccountContr
                 ActualPassword = "wrongpassword",
                 NewPassword = "newpass"
             };
-
             var response = await _client.PatchAsJsonAsync($"api/Account/me", updateDto);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }

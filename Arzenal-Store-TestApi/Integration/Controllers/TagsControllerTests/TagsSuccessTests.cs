@@ -1,8 +1,9 @@
-﻿using Arzenal.Dto.DTOs.TagDto;
+using Arzenal.Dto.DTOs.TagDto;
+using Arzenal.Store.Api.TestIntegration.Infrastructure;
 using System.Net;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using Arzenal.Store.Api.TestIntegration.Infrastructure;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.TagsControllerTests
 {
@@ -65,10 +66,22 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.TagsControll
         {
             // Arrange
             var newTag = new CreateTagDto { Name = "Services" };
-            var jsonContent = new StringContent(JsonSerializer.Serialize(newTag), Encoding.UTF8, "application/json");
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
 
-            // Act
-            var postResponse = await _client.PostAsync("api/tags", jsonContent);
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(newTag);
+
+            // 2️⃣ Calculer signature
+            var url = $"api/tags/";
+
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var postResponse = await _client.SendAsync(request);
 
             // Assert
             postResponse.EnsureSuccessStatusCode();
@@ -96,9 +109,22 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.TagsControll
         {
             // Arrange
             var newTag = new CreateTagDto { Name = "Tags to Update" };
-            var jsonContent = new StringContent(JsonSerializer.Serialize(newTag), Encoding.UTF8, "application/json");
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
 
-            var postResponse = await _client.PostAsync("api/tags", jsonContent);
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(newTag);
+
+            // 2️⃣ Calculer signature
+            var url = $"api/tags/";
+
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var postResponse = await _client.SendAsync(request);
             postResponse.EnsureSuccessStatusCode();
 
             var responseObject = JsonSerializer.Deserialize<JsonElement>(await postResponse.Content.ReadAsStringAsync());
@@ -106,10 +132,20 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.TagsControll
 
             // Mise à jour
             var updatedTag = new UpdateTagDto { Name = "Tag Updated" };
-            jsonContent = new StringContent(JsonSerializer.Serialize(updatedTag), Encoding.UTF8, "application/json");
 
-            // Act
-            var putResponse = await _client.PutAsync($"api/tags/{id}", jsonContent);
+            // 1️⃣ Serialize le DTO une seule fois
+            jsonBody = JsonSerializer.Serialize(updatedTag);
+
+            // 2️⃣ Calculer signature
+            url = $"api/tags/{id}";
+
+            request = new HttpRequestMessage(HttpMethod.Put, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var putResponse = await _client.SendAsync(request);
 
             // Assert
             putResponse.EnsureSuccessStatusCode();
@@ -130,9 +166,22 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.TagsControll
         {
             // Arrange
             var newTag = new CreateTagDto { Name = "Tag to Delete" };
-            var jsonContent = new StringContent(JsonSerializer.Serialize(newTag), Encoding.UTF8, "application/json");
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
 
-            var postResponse = await _client.PostAsync("api/tags", jsonContent);
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(newTag);
+
+            // 2️⃣ Calculer signature
+            var url = $"api/tags/";
+
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var postResponse = await _client.SendAsync(request);
             postResponse.EnsureSuccessStatusCode();
 
             var responseObject = JsonSerializer.Deserialize<JsonElement>(await postResponse.Content.ReadAsStringAsync());

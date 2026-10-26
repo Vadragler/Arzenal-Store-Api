@@ -1,4 +1,3 @@
-using Arzenal.Store.Api.Service.Services.Auth.Passwords;
 using Arzenal.Store.Api.Service.Interfaces;
 using Arzenal.Store.Api.Service.Mapping.AppMaping;
 using Arzenal.Store.Api.Service.Mapping.CategoryMapping;
@@ -11,8 +10,8 @@ using Arzenal.Store.Api.Service.Services.AppService;
 using Arzenal.Store.Api.Service.Services.Auth;
 using Arzenal.Store.Api.Service.Services.Auth.Cookies;
 using Arzenal.Store.Api.Service.Services.Auth.Invites;
+using Arzenal.Store.Api.Service.Services.Auth.Passwords;
 using Arzenal.Store.Api.Service.Services.Auth.RequestContext;
-using Arzenal.Store.Api.Service.Services.Auth.RequestInfo;
 using Arzenal.Store.Api.Service.Services.Auth.Tokens;
 using Arzenal.Store.Api.Service.Services.CategoryService;
 using Arzenal.Store.Api.Service.Services.LanguageService;
@@ -31,6 +30,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOperatingSystemService, OperatingSystemService>();
         services.AddScoped<ITagService, TagService>();
         services.AddScoped<IAppFilesService, AppFilesService>();
+        services.AddSingleton<IFileScanner, ClamAvFileScanner>();
 
         return services;
     }
@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+        services.AddSingleton<IRefreshTokenHasher, HmacRefreshTokenHasher>();
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<ICookieService, CookieService>();
         services.AddScoped<IPasswordService, PasswordService>();
@@ -70,7 +71,6 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddRequestProviders(this IServiceCollection services)
     {
         services.AddScoped<IRequestContextProvider, RequestContextProvider>();
-        services.AddScoped<IRequestInfoProvider, RequestInfoProvider>();
 
         return services;
     }

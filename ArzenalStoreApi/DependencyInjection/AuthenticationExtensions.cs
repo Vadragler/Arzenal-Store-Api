@@ -11,6 +11,11 @@ namespace ArzenalStoreApi.DependencyInjection
     {
         public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
         {
+            var jwtSecret = GetRequiredSecret(configuration, "Jwt:SecretKey");
+            var appLoginSecret = GetRequiredSecret(configuration, "Jwt-App-Login:SecretKey");
+            var jwtIssuer = GetRequiredValue(configuration, "Jwt:Issuer");
+            var appLoginIssuer = GetRequiredValue(configuration, "Jwt-App-Login:Issuer");
+
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = "CookieJwt";
@@ -19,7 +24,7 @@ namespace ArzenalStoreApi.DependencyInjection
             })
             .AddJwtBearer("CookieJwt", options =>
             {
-                var key = Encoding.UTF8.GetBytes(configuration["Jwt:SecretKey"]);
+                var key = Encoding.UTF8.GetBytes(jwtSecret);
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     NameClaimType = ClaimTypes.NameIdentifier,
@@ -27,7 +32,7 @@ namespace ArzenalStoreApi.DependencyInjection
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(key),
                     ValidateIssuer = true,
-                    ValidIssuer = configuration["Jwt:Issuer"],
+                    ValidIssuer = jwtIssuer,
                     ValidateAudience = true,
                     ValidAudiences = new[]
                     {
@@ -50,14 +55,14 @@ namespace ArzenalStoreApi.DependencyInjection
             })
             .AddJwtBearer("HeaderJwt", options =>
             {
-                var key = Encoding.UTF8.GetBytes(configuration["Jwt-App-Login:SecretKey"]);
+                var key = Encoding.UTF8.GetBytes(appLoginSecret);
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     RoleClaimType = ClaimTypes.Role,
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(key),
                     ValidateIssuer = true,
-                    ValidIssuer = configuration["Jwt-App-Login:Issuer"],
+                    ValidIssuer = appLoginIssuer,
                     ValidateAudience = true,
                     ValidAudience = "app-login",
                     ClockSkew = TimeSpan.Zero
@@ -67,10 +72,8 @@ namespace ArzenalStoreApi.DependencyInjection
             // Déplacer la configuration des policies ici
             services.AddAuthorization(options =>
             {
-                // ⚠️ Pas de RequireRole ici
                 options.FallbackPolicy = new AuthorizationPolicyBuilder()
                     .RequireAuthenticatedUser()
-                    .RequireRole("Admin")
                     .Build();
             });
 
@@ -86,12 +89,14 @@ namespace ArzenalStoreApi.DependencyInjection
                 {
                     policy.AuthenticationSchemes.Add("CookieJwt");
                     policy.RequireClaim(JwtRegisteredClaimNames.Aud, "web");
+                    policy.RequireRole("User", "Admin");
                 })
 
                 .AddPolicy("ArzenalAuth", policy =>
                 {
                     policy.AuthenticationSchemes.Add("CookieJwt");
                     policy.RequireClaim(JwtRegisteredClaimNames.Aud, "ArzenalAuth");
+                    policy.RequireRole("User", "Admin");
                 })
 
                 .AddPolicy("ArzenalStoreManager", policy =>
@@ -105,11 +110,34 @@ namespace ArzenalStoreApi.DependencyInjection
                 {
                     policy.AuthenticationSchemes.Add("HeaderJwt");
                     policy.RequireClaim(JwtRegisteredClaimNames.Aud, "app-login");
+                    policy.RequireRole("User", "Admin");
                 });
 
 
             return services;
         }
+
+        private static string GetRequiredSecret(IConfiguration configuration, string key)
+        {
+            var value = GetRequiredValue(configuration, key);
+            if (value.Length < 32 ||
+                value.Contains("your_", StringComparison.OrdinalIgnoreCase) ||
+                value.Contains("change-me", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"La configuration {key} doit contenir un secret fort d'au moins 32 caractères.");
+            }
+
+            return value;
+        }
+
+        private static string GetRequiredValue(IConfiguration configuration, string key)
+        {
+            var value = configuration[key];
+            if (string.IsNullOrWhiteSpace(value))
+                throw new InvalidOperationException($"La configuration requise {key} est absente.");
+
+            return value;
+        }
     }
-     
+
 }

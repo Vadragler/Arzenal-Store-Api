@@ -2,7 +2,6 @@
 using Arzenal.Store.Api.Domain.Models.Requests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
-using System.Text;
 using System.Text.Json;
 
 namespace Arzenal.Store.Api.Service.Services.Auth.Cookies
@@ -19,9 +18,15 @@ namespace Arzenal.Store.Api.Service.Services.Auth.Cookies
 
             try
             {
-                var json = Encoding.UTF8.GetString(Convert.FromBase64String(cookieValue));
-                return JsonSerializer.Deserialize<RefreshTokenCookieData>(
-                Convert.FromBase64String(cookieValue));
+                var payload = JsonSerializer.Deserialize<RefreshTokenCookiePayload>(
+                    Convert.FromBase64String(cookieValue));
+
+                if (string.IsNullOrWhiteSpace(payload?.Token))
+                    return null;
+
+                // Le cookie n'est pas signé : il ne doit donc jamais transporter une identité.
+                // Les propriétés supplémentaires des anciens cookies sont ignorées volontairement.
+                return new RefreshTokenCookieData { Token = payload.Token };
             }
             catch
             {
@@ -42,7 +47,7 @@ namespace Arzenal.Store.Api.Service.Services.Auth.Cookies
         {
             var domain = _configuration["CookieDomain"];
             var cookieValue = Convert.ToBase64String(
-               JsonSerializer.SerializeToUtf8Bytes(data));
+               JsonSerializer.SerializeToUtf8Bytes(new RefreshTokenCookiePayload(data.Token)));
 
             response.Cookies.Append("refreshToken", cookieValue, new CookieOptions
             {
@@ -92,5 +97,7 @@ namespace Arzenal.Store.Api.Service.Services.Auth.Cookies
         {
             response.Cookies.Delete("refreshToken");
         }
+
+        private sealed record RefreshTokenCookiePayload(string Token);
     }
 }

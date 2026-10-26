@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using Arzenal.Dto.DTOs.AppDto;
+﻿using Arzenal.Dto.DTOs.AppDto;
+using Arzenal.Dto.DTOs.Pagination;
 using Arzenal.Store.Api.Service.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
 
@@ -37,6 +38,20 @@ namespace ArzenalStoreApi.Controllers.Apps
                 return Ok(new { message = "La Liste est vide" });
             }
             return Ok(appDtos);
+        }
+
+        /// <summary>
+        /// Retourne une page bornée d'applications, destinée aux catalogues.
+        /// </summary>
+        [HttpGet("page")]
+        [ProducesResponseType(typeof(PagedResultDto<ReadAppDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<PagedResultDto<ReadAppDto>>> GetAppsPage(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            CancellationToken cancellationToken = default)
+        {
+            return Ok(await _appService.GetAppsPageAsync(page, pageSize, cancellationToken));
         }
 
         /// <summary>
@@ -109,8 +124,8 @@ namespace ArzenalStoreApi.Controllers.Apps
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> DeleteApp(Guid id)
         {
-           await _appService.DeleteAppAsync(id);
-           return NoContent();
+            await _appService.DeleteAppAsync(id);
+            return NoContent();
         }
     }
 }

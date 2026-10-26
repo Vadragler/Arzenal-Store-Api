@@ -4,28 +4,24 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using ArzenalStoreApi.Controllers.Auth;
+using System.Security.Claims;
 
 namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AuthControllerTests
 {
     public class AuthErrorTests
     {
         private readonly Mock<IAuthService> _authServiceMock;
-        private readonly Mock<IRefreshTokenService> _refreshTokenServiceMock;
         private readonly Mock<IJwtService> _jwtServiceMock;
-        private readonly Mock<IRequestInfoProvider> _requestInfoProviderMock;
-        private readonly Mock<ICookieService> _cookieServiceMock;
         private readonly AuthController _authController;
 
         public AuthErrorTests()
         {
             _authServiceMock = new Mock<IAuthService>();
             _jwtServiceMock = new Mock<IJwtService>();
-            _requestInfoProviderMock = new Mock<IRequestInfoProvider>();
 
             _authController = new AuthController(
                 _authServiceMock.Object,
-                _jwtServiceMock.Object,
-                _requestInfoProviderMock.Object
+                _jwtServiceMock.Object
             );
         }
 
@@ -109,11 +105,16 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AuthControllerTests
         public async Task CreateWPFToken_ShouldThrow_WhenServiceFails()
         {
             // Arrange
+            var userId = Guid.NewGuid();
             var httpContext = new DefaultHttpContext();
+            httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+            }, "test"));
             _authController.ControllerContext.HttpContext = httpContext;
 
             _jwtServiceMock
-                .Setup(s => s.GenerateJwtTokenForAppAsync(httpContext.Request))
+                .Setup(s => s.GenerateJwtTokenForAppAsync(userId, httpContext.Request))
                 .Throws(new InvalidOperationException("Erreur de génération du token"));
 
             // Act & Assert

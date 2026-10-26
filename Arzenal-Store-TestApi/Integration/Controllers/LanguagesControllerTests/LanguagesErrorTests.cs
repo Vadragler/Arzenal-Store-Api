@@ -1,6 +1,7 @@
-﻿using Arzenal.Dto.DTOs.LanguageDto;
+using Arzenal.Dto.DTOs.LanguageDto;
 using Arzenal.Store.Api.TestIntegration.Infrastructure;
 using System.Net;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
@@ -68,10 +69,22 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.LanguagesCon
         {
             // Arrange
             var newLanguage = new CreateLanguageDto { Name = name };
-            var jsonContent = new StringContent(JsonSerializer.Serialize(newLanguage), Encoding.UTF8, "application/json");
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
 
-            // Act
-            var response = await _client.PostAsync("api/languages", jsonContent);
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(newLanguage);
+
+            // 2️⃣ Calculer signature
+            var url = $"api/languages/";
+
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var response = await _client.SendAsync(request);
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -82,19 +95,42 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.LanguagesCon
         public async Task PutLanguage_ReturnsConflict_WhenLanguageAlreadyExist()
         {
             // Arrange
-            var newLanguage = new CreateLanguageDto { Name = "Italian" };
-            var jsonContent = new StringContent(JsonSerializer.Serialize(newLanguage), Encoding.UTF8, "application/json");
+            var dto = new CreateLanguageDto { Name = "Italian" };
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
 
-            // Act
-            var postResponse = await _client.PostAsync("api/languages", jsonContent);
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(dto);
+
+            // 2️⃣ Calculer signature
+            var url = "api/languages/";
+
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var postResponse = await _client.SendAsync(request);
             postResponse.EnsureSuccessStatusCode();
 
             var responseJson = await postResponse.Content.ReadAsStringAsync();
             var createdLanguage = JsonSerializer.Deserialize<ReadLanguageDto>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            Assert.NotNull(createdLanguage);
 
             var updateDto = new UpdateLanguageDto { Name = "French" };
-            jsonContent = new StringContent(JsonSerializer.Serialize(updateDto), Encoding.UTF8, "application/json");
-            var putResponse = await _client.PutAsync($"api/languages/{createdLanguage!.Id}", jsonContent);
+            jsonBody = JsonSerializer.Serialize(updateDto);
+
+            // 2️⃣ Calculer signature
+            url = $"api/languages/{createdLanguage.Id}";
+
+            request = new HttpRequestMessage(HttpMethod.Put, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var putResponse = await _client.SendAsync(request);
 
             // Assert
             Assert.Equal(HttpStatusCode.Conflict, putResponse.StatusCode);
@@ -105,10 +141,22 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.LanguagesCon
         {
             // Arrange
             var updateDto = new UpdateLanguageDto { Name = "New Name" };
-            var jsonContent = new StringContent(JsonSerializer.Serialize(updateDto), Encoding.UTF8, "application/json");
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
 
-            // Act
-            var response = await _client.PutAsync("api/languages/abc", jsonContent);
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(updateDto);
+
+            // 2️⃣ Calculer signature
+            var url = $"api/languages/abc";
+
+            var request = new HttpRequestMessage(HttpMethod.Put, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var response = await _client.SendAsync(request);
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -119,10 +167,22 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.LanguagesCon
         {
             // Arrange
             var updateDto = new UpdateLanguageDto { Name = "New Name" };
-            var jsonContent = new StringContent(JsonSerializer.Serialize(updateDto), Encoding.UTF8, "application/json");
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
 
-            // Act
-            var response = await _client.PutAsync($"api/languages/{Guid.NewGuid()}", jsonContent);
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(updateDto);
+
+            // 2️⃣ Calculer signature
+            var url = $"api/languages/{Guid.NewGuid()}";
+
+            var request = new HttpRequestMessage(HttpMethod.Put, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var response = await _client.SendAsync(request);
 
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -134,18 +194,43 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.LanguagesCon
         {
             // Arrange
             var newLanguage = new CreateLanguageDto { Name = "Temp" };
-            var jsonContent = new StringContent(JsonSerializer.Serialize(newLanguage), Encoding.UTF8, "application/json");
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
 
-            // Act
-            var postResponse = await _client.PostAsync("api/languages", jsonContent);
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(newLanguage);
+
+            // 2️⃣ Calculer signature
+            var url = "api/languages/";
+
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var postResponse = await _client.SendAsync(request);
             postResponse.EnsureSuccessStatusCode();
 
             var responseJson = await postResponse.Content.ReadAsStringAsync();
             var createdLanguage = JsonSerializer.Deserialize<ReadLanguageDto>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            Assert.NotNull(createdLanguage);
 
             var updateDto = new UpdateLanguageDto { Name = name };
-            jsonContent = new StringContent(JsonSerializer.Serialize(updateDto), Encoding.UTF8, "application/json");
-            var putResponse = await _client.PutAsync($"api/languages/{createdLanguage!.Id}", jsonContent);
+
+            // 1️⃣ Serialize le DTO une seule fois
+            jsonBody = JsonSerializer.Serialize(updateDto);
+
+            // 2️⃣ Calculer signature
+            url = $"api/languages/{createdLanguage.Id}";
+
+            request = new HttpRequestMessage(HttpMethod.Put, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var putResponse = await _client.SendAsync(request);
 
             var deleteResponse = await _client.DeleteAsync($"api/languages/{createdLanguage.Id}");
 

@@ -1,10 +1,14 @@
-using Arzenal.Store.Api.Domain.Models;
-using ArzenalStoreInfrastructure.Data;
-using Arzenal.Store.Api.Service.Exceptions;
 using Arzenal.Dto.DTOs.AppDto;
-using Microsoft.EntityFrameworkCore;
-using OperatingSystem = Arzenal.Store.Api.Domain.Models.OperatingSystem;
+using Arzenal.Store.Api.Domain.Models;
+using Arzenal.Store.Api.Service.Exceptions;
+using Arzenal.Store.Api.Service.Interfaces;
 using Arzenal.Store.Api.TestIntegration.Infrastructure;
+using ArzenalStoreInfrastructure.Data;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Moq;
+using System.Security.Claims;
+using OperatingSystem = Arzenal.Store.Api.Domain.Models.OperatingSystem;
 
 namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
 {
@@ -23,7 +27,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
         {
             // Arrange
             using var db = GetDbContext();
-            
+
 
             db.Categories.Add(new Categorie { Id = Guid.Parse("d9b1f7c4-3f2a-4b6e-a2d1-8f5b7e9c2a1d"), Name = "Cat" });
             db.Apps.Add(new App
@@ -59,6 +63,37 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
 
             // Assert
             Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task GetAppsPageAsync_ReturnsOnlyTheRequestedStablePage()
+        {
+            using var db = GetDbContext();
+            db.Apps.AddRange(
+                new App { Id = Guid.NewGuid(), Name = "Gamma", Version = "1.0" },
+                new App { Id = Guid.NewGuid(), Name = "Alpha", Version = "1.0" },
+                new App { Id = Guid.NewGuid(), Name = "Beta", Version = "1.0" });
+            await db.SaveChangesAsync();
+            var service = TestHelpers.CreateAppService(db);
+
+            var result = await service.GetAppsPageAsync(page: 2, pageSize: 1);
+
+            Assert.Equal(3, result.TotalCount);
+            Assert.Equal(3, result.TotalPages);
+            Assert.Single(result.Items);
+            Assert.Equal("Beta", result.Items[0].Name);
+        }
+
+        [Theory]
+        [InlineData(0, 20)]
+        [InlineData(1, 0)]
+        [InlineData(1, 101)]
+        public async Task GetAppsPageAsync_RejectsInvalidPagination(int page, int pageSize)
+        {
+            using var db = GetDbContext();
+            var service = TestHelpers.CreateAppService(db);
+
+            await Assert.ThrowsAsync<ValidationException>(() => service.GetAppsPageAsync(page, pageSize));
         }
 
         [Fact]
@@ -164,10 +199,11 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             // Act & Assert
             if (scenario == "Duplicate")
             {
-                db.Apps.Add(new App { Id = Guid.NewGuid(), Name = "TestApp", CategoryId = Guid.NewGuid(),Version = "1.0"});
+                db.Apps.Add(new App { Id = Guid.NewGuid(), Name = "TestApp", CategoryId = Guid.NewGuid(), Version = "1.0" });
                 await db.SaveChangesAsync();
                 await Assert.ThrowsAsync<DuplicateException>(() => service.CreateAppAsync(dto));
-            } else if (scenario == "InvalidCategory")
+            }
+            else if (scenario == "InvalidCategory")
             {
                 await Assert.ThrowsAsync<ValidationException>(() => service.CreateAppAsync(dto));
             }

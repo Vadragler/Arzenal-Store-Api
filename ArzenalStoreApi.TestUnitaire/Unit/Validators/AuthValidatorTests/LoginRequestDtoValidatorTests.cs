@@ -3,6 +3,7 @@ using Arzenal.Dto.Validators.AuthDtoValidators;
 using FluentValidation.TestHelper;
 
 namespace Arzenal.Store.Api.TestUnitaire.Unit.Validators.AuthValidatorTests;
+
 public class LoginRequestDtoValidatorTests
 {
     private readonly LoginRequestDtoValidator _validator = new();

@@ -1,11 +1,12 @@
-﻿using Arzenal.Store.Api.Service.Interfaces;
-using Arzenal.Store.Api.Domain.Models;
-using Arzenal.Store.Api.Service.Exceptions;
-using Arzenal.Store.Api.Service.Services.Accounts;
 using Arzenal.Dto.DTOs.AccountDto;
+using Arzenal.Store.Api.Domain.Models;
+using Arzenal.Store.Api.Infrastructure.Data;
+using Arzenal.Store.Api.Service.Exceptions;
+using Arzenal.Store.Api.Service.Interfaces;
+using Arzenal.Store.Api.Service.Services.Accounts;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Moq;
-using Arzenal.Store.Api.Infrastructure.Data;
 
 namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
 {
@@ -20,8 +21,8 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             var context = new AuthDbContext(options);
 
             context.Users.AddRange(
-                new User { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Username = "Alice", Email = "alice@test.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("password123") },
-                new User { Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), Username = "Bob", Email = "bob@test.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("secret") }
+                new User { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Username = "Alice", Email = "alice@test.com", PasswordHash = "hash-not-used-in-this-test" },
+                new User { Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), Username = "Bob", Email = "bob@test.com", PasswordHash = "hash-not-used-in-this-test" }
             );
 
             context.SaveChanges();
@@ -34,6 +35,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             // Arrange
             var context = GetDbContext();
             var passwordService = new Mock<IPasswordService>().Object;
+            var httpContextAccessor = new Mock<IHttpContextAccessor>().Object;
             var service = new UserService(context, passwordService);
 
             // Act
@@ -50,6 +52,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             // Arrange
             var context = GetDbContext();
             var passwordServiceMock = new Mock<IPasswordService>().Object;
+            var httpContextAccessor = new Mock<IHttpContextAccessor>().Object;
             var service = new UserService(context, passwordServiceMock);
 
             // Act & Assert
@@ -62,6 +65,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             // Arrange
             var context = GetDbContext();
             var passwordServiceMock = new Mock<IPasswordService>().Object;
+            var httpContextAccessor = new Mock<IHttpContextAccessor>().Object;
             var service = new UserService(context, passwordServiceMock);
 
             // Act
@@ -78,6 +82,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             // Arrange
             var context = GetDbContext();
             var passwordServiceMock = new Mock<IPasswordService>().Object;
+            var httpContextAccessor = new Mock<IHttpContextAccessor>().Object;
             var service = new UserService(context, passwordServiceMock);
 
             // Act & Assert
@@ -93,7 +98,6 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             passwordServiceMock.Setup(p => p.Verify(It.IsAny<string>(), It.IsAny<string>())).Returns(true);
             passwordServiceMock.Setup(p => p.Hash(It.IsAny<string>())).Returns("hashedNewPassword");
 
-            var service = new UserService(context, passwordServiceMock.Object);
 
             var updateDto = new UpdateAccountDto
             {
@@ -102,12 +106,23 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
                 ActualPassword = "password123",
                 NewPassword = "newpassword"
             };
+            var jsonbody = System.Text.Json.JsonSerializer.Serialize(updateDto);
+            Guid userId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+            var httpContext = new DefaultHttpContext();
+
+            httpContext.Request.Headers["X-Device-Name"] = "IntegrationTestDevice";
+
+            var httpContextAccessorMock = new Mock<IHttpContextAccessor>();
+            httpContextAccessorMock.Setup(x => x.HttpContext).Returns(httpContext);
+
+            var service = new UserService(context, passwordServiceMock.Object);
 
             // Act
             await service.PatchAsync("11111111-1111-1111-1111-111111111111", updateDto);
             var user = await context.Users.FindAsync(Guid.Parse("11111111-1111-1111-1111-111111111111"));
 
             // Assert
+            Assert.NotNull(user);
             Assert.Equal("AliceUpdated", user.Username);
             Assert.Equal("alice2@test.com", user.Email);
             Assert.Equal("hashedNewPassword", user.PasswordHash);
@@ -121,6 +136,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             var passwordServiceMock = new Mock<IPasswordService>();
             passwordServiceMock.Setup(p => p.Verify(It.IsAny<string>(), It.IsAny<string>())).Returns(false);
 
+            var httpContextAccessor = new Mock<IHttpContextAccessor>().Object;
             var service = new UserService(context, passwordServiceMock.Object);
 
             var updateDto = new UpdateAccountDto

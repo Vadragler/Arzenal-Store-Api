@@ -1,99 +1,132 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Arzenal.Store.Api.Service.Services.Auth.Tokens;
+using Arzenal.Store.Api.Domain.Models;
+using Arzenal.Store.Api.Domain.Models.Requests;
 using Arzenal.Store.Api.Infrastructure.Data;
 using Arzenal.Store.Api.Service.Exceptions;
 using Arzenal.Store.Api.Service.Interfaces;
+using Arzenal.Store.Api.Service.Services.Auth.Tokens;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Moq;
-using Xunit;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
-namespace ArzenalStoreApi.TestUnitaire.Unit.Services
+namespace ArzenalStoreApi.TestUnitaire.Unit.Services;
+
+public class JwtServiceTests
 {
-    public class JwtServiceTests
+    private static AuthDbContext CreateContext(string name) => new(
+        new DbContextOptionsBuilder<AuthDbContext>().UseInMemoryDatabase(name).Options);
+
+    private static IConfiguration CreateConfiguration() => new ConfigurationBuilder()
+        .AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Jwt:SecretKey"] = "unit-test-jwt-secret-must-be-at-least-thirty-two-characters",
+            ["Jwt:Issuer"] = "unit-test-issuer",
+            ["Jwt:ExpiryHours"] = "1",
+            ["Jwt-App-Login:SecretKey"] = "unit-test-app-jwt-secret-must-be-at-least-thirty-two-characters",
+            ["Jwt-App-Login:Issuer"] = "unit-test-app-issuer",
+            ["AppLogin:AllowedAppIds:0"] = "test-app"
+        })
+        .Build();
+
+    private static IRefreshTokenHasher CreateHasher()
     {
-        private static AuthDbContext CreateInMemoryAuthDb(string dbName)
+        var hasher = new Mock<IRefreshTokenHasher>();
+        hasher.Setup(service => service.Hash(It.IsAny<string>()))
+            .Returns((string token) => $"hash:{token}");
+        return hasher.Object;
+    }
+
+    [Fact]
+    public async Task GenerateJwtTokenAsync_ThrowsNotFound_WhenUserDoesNotExist()
+    {
+        await using var db = CreateContext(nameof(GenerateJwtTokenAsync_ThrowsNotFound_WhenUserDoesNotExist));
+        var service = new JwtService(db, CreateConfiguration(), Mock.Of<ICookieService>(), CreateHasher());
+
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            service.GenerateJwtTokenAsync(Guid.NewGuid(), ["web"]));
+    }
+
+    [Fact]
+    public async Task GenerateJwtTokenAsync_ContainsRequestedAudiences()
+    {
+        await using var db = CreateContext(nameof(GenerateJwtTokenAsync_ContainsRequestedAudiences));
+        var userId = Guid.NewGuid();
+        db.Users.Add(new User { Id = userId, Username = "user", Email = "user@example.com", PasswordHash = "hash", Role = "Admin" });
+        await db.SaveChangesAsync();
+        var service = new JwtService(db, CreateConfiguration(), Mock.Of<ICookieService>(), CreateHasher());
+
+        var token = await service.GenerateJwtTokenAsync(userId, ["web", "ArzenalStoreManager"]);
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        Assert.Contains(jwt.Audiences, audience => audience == "web");
+        Assert.Contains(jwt.Audiences, audience => audience == "ArzenalStoreManager");
+    }
+
+    [Fact]
+    public async Task GenerateJwtTokenForApp_RequiresAnAllowedAppAndTheUsersOwnActiveRefreshToken()
+    {
+        await using var db = CreateContext(nameof(GenerateJwtTokenForApp_RequiresAnAllowedAppAndTheUsersOwnActiveRefreshToken));
+        var userId = Guid.NewGuid();
+        db.Users.Add(new User { Id = userId, Username = "user", Email = "user@example.com", PasswordHash = "hash", Role = "Admin" });
+        db.RefreshTokens.Add(new RefreshToken
         {
-            var options = new DbContextOptionsBuilder<AuthDbContext>()
-                .UseInMemoryDatabase(dbName)
-                .Options;
-            return new AuthDbContext(options);
-        }
+            TokenHash = "hash:refresh",
+            UserId = userId,
+            FamilyId = Guid.NewGuid(),
+            DeviceName = "device",
+            Fingerprint = "fp",
+            ExpiresAt = DateTime.UtcNow.AddDays(1)
+        });
+        await db.SaveChangesAsync();
 
-        [Fact]
-        public async Task GenerateJwtTokenAsync_ThrowsNotFound_WhenUserNotExists()
+        var cookies = new Mock<ICookieService>();
+        cookies.Setup(service => service.GetRefreshToken(It.IsAny<HttpRequest>()))
+            .Returns(new RefreshTokenCookieData { Token = "refresh", UserId = Guid.NewGuid() });
+        var service = new JwtService(db, CreateConfiguration(), cookies.Object, CreateHasher());
+        var context = new DefaultHttpContext();
+        context.Request.Headers["X-App-Id"] = "test-app";
+
+        var token = await service.GenerateJwtTokenForAppAsync(userId, context.Request);
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        Assert.Contains(jwt.Claims, claim => claim.Type == JwtRegisteredClaimNames.NameId && claim.Value == userId.ToString());
+        Assert.Contains(jwt.Claims, claim => claim.Type == "appId" && claim.Value == "test-app");
+    }
+
+    [Fact]
+    public async Task GenerateJwtTokenForApp_RejectsUnknownAppAndOtherUsersRefreshToken()
+    {
+        await using var db = CreateContext(nameof(GenerateJwtTokenForApp_RejectsUnknownAppAndOtherUsersRefreshToken));
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        db.Users.AddRange(
+            new User { Id = userId, Username = "user", Email = "user@example.com", PasswordHash = "hash" },
+            new User { Id = otherUserId, Username = "other", Email = "other@example.com", PasswordHash = "hash" });
+        db.RefreshTokens.Add(new RefreshToken
         {
-            // Arrange
-            await using var db = CreateInMemoryAuthDb("jwt_test_missing_user");
-            var inMemory = new Dictionary<string, string?>
-            {
-                ["Jwt:SecretKey"] = "test-secret-key-1234567890",
-                ["Jwt:Issuer"] = "test-issuer",
-                ["Jwt:ExpiryHours"] = "1"
-            };
-            var configuration = new ConfigurationBuilder().AddInMemoryCollection(inMemory).Build();
-            var cookieServiceMock = new Mock<ICookieService>();
-            var service = new JwtService(db, configuration, cookieServiceMock.Object);
+            TokenHash = "hash:refresh",
+            UserId = otherUserId,
+            FamilyId = Guid.NewGuid(),
+            DeviceName = "device",
+            Fingerprint = "fp",
+            ExpiresAt = DateTime.UtcNow.AddDays(1)
+        });
+        await db.SaveChangesAsync();
 
-            // Act & Assert
-            await Assert.ThrowsAsync<NotFoundException>(() => service.GenerateJwtTokenAsync(Guid.NewGuid(), new List<string>{"web"}));
-        }
+        var cookies = new Mock<ICookieService>();
+        cookies.Setup(service => service.GetRefreshToken(It.IsAny<HttpRequest>()))
+            .Returns(new RefreshTokenCookieData { Token = "refresh" });
+        var service = new JwtService(db, CreateConfiguration(), cookies.Object, CreateHasher());
+        var context = new DefaultHttpContext();
+        context.Request.Headers["X-App-Id"] = "unknown-app";
 
-        [Fact]
-        public async Task GenerateJwtTokenAsync_ReturnsTokenWithAudiences_WhenValid()
-        {
-            // Arrange
-            var dbName = "jwt_test_valid_token" + Guid.NewGuid();
-            await using var db = CreateInMemoryAuthDb(dbName);
-            var userId = Guid.NewGuid();
-            db.Users.Add(new Arzenal.Store.Api.Domain.Models.User { Id = userId, PasswordHash = "hashed-password", Username = "testuser", Email = "a@b.com", Role = "Admin" });
-            await db.SaveChangesAsync();
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            service.GenerateJwtTokenForAppAsync(userId, context.Request));
 
-            var inMemory = new Dictionary<string, string?>
-            {
-                ["Jwt:SecretKey"] = "test-secret-key-123456789012345678",
-                ["Jwt:Issuer"] = "test-issuer",
-                ["Jwt:ExpiryHours"] = "1"
-            };
-            var configuration = new ConfigurationBuilder().AddInMemoryCollection(inMemory).Build();
-            var cookieServiceMock = new Mock<ICookieService>();
-            var service = new JwtService(db, configuration, cookieServiceMock.Object);
-
-            // Act
-            var token = await service.GenerateJwtTokenAsync(userId, new List<string> { "web", "ArzenalStoreManager" });
-
-            // Assert
-            Assert.False(string.IsNullOrEmpty(token));
-            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-            var jwt = handler.ReadJwtToken(token);
-            var audClaims = jwt.Claims.Where(c => c.Type == System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Aud).Select(c => c.Value).ToList();
-            Assert.Contains("web", audClaims);
-            Assert.Contains("ArzenalStoreManager", audClaims);
-        }
-
-        [Fact]
-        public async Task GenerateJwtTokenForAppAsync_Throws_WhenMissingXAppId()
-        {
-            // Arrange
-            await using var db = CreateInMemoryAuthDb("jwt_test_missing_xappid");
-            var inMemory = new Dictionary<string, string?>
-            {
-                ["Jwt-App-Login:SecretKey"] = "app-secret-key-123456",
-                ["Jwt-App-Login:Issuer"] = "app-issuer"
-            };
-            var configuration = new ConfigurationBuilder().AddInMemoryCollection(inMemory).Build();
-            var cookieServiceMock = new Mock<ICookieService>();
-            var service = new JwtService(db, configuration, cookieServiceMock.Object);
-
-            var context = new DefaultHttpContext();
-            var request = context.Request;
-
-            // Act & Assert
-            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.GenerateJwtTokenForAppAsync(request));
-        }
+        context.Request.Headers["X-App-Id"] = "test-app";
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            service.GenerateJwtTokenForAppAsync(userId, context.Request));
     }
 }

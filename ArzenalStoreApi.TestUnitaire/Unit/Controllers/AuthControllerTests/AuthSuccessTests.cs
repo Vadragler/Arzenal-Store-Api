@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using ArzenalStoreApi.Controllers.Auth;
+using System.Security.Claims;
 
 namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AuthControllerTests
 {
@@ -11,22 +12,17 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AuthControllerTests
     {
 
         private readonly Mock<IAuthService> _authServiceMock;
-        private readonly Mock<IRefreshTokenService> _refreshTokenServiceMock;
         private readonly Mock<IJwtService> _jwtServiceMock;
-        private readonly Mock<IRequestInfoProvider> _requestInfoProviderMock;
-        private readonly Mock<ICookieService> _cookieServiceMock;
         private readonly AuthController _authController;
         public AuthSuccessTests()
         {
             // Mocks
             _jwtServiceMock = new Mock<IJwtService>();
             _authServiceMock = new Mock<IAuthService>();
-            _requestInfoProviderMock = new Mock<IRequestInfoProvider>();
 
             _authController = new AuthController(
                _authServiceMock.Object,
-               _jwtServiceMock.Object,
-               _requestInfoProviderMock.Object
+               _jwtServiceMock.Object
             );
         }
 
@@ -59,7 +55,12 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AuthControllerTests
             var refreshToken = "mocked-refresh-token";
 
             _authServiceMock
-                .Setup(service => service.AuthenticateAsync(response, request.Email, request.Password, It.IsAny<CreateRefreshTokenDto>()))
+                .Setup(service => service.AuthenticateAsync(
+                    It.IsAny<HttpResponse>(),
+                    request.Email,
+                    request.Password,
+                    It.Is<CreateRefreshTokenDto>(dto =>
+                        dto.DeviceName == request.DeviceName && dto.Fingerprint == request.Fingerprint)))
                 .ReturnsAsync((token, refreshToken));
 
             _authController.ControllerContext = new ControllerContext
@@ -96,7 +97,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AuthControllerTests
 
         [Fact]
         public async Task GenerateRefreshToken_ShouldReturnOk()
-        {             
+        {
             // Arrange
             var httpContext = new DefaultHttpContext();
             _authController.ControllerContext = new ControllerContext
@@ -105,7 +106,6 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AuthControllerTests
             };
             var dto = new CreateRefreshTokenDto
             {
-                UserId = Guid.NewGuid(),
                 DeviceName = "Nom Device",
                 Fingerprint = "Fingerprint123"
             };
@@ -169,12 +169,27 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AuthControllerTests
         [Fact]
         public async Task CreateWPFToken_ShouldReturnOk_WithToken()
         {
+            // Arrange
+            var userId = Guid.NewGuid();
+            var httpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+                }, "test"))
+            };
+            _authController.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            _jwtServiceMock
+                .Setup(s => s.GenerateJwtTokenForAppAsync(userId, httpContext.Request))
+                .ReturnsAsync("app-login-token");
+
             // Act
             var result = await _authController.Create_App_Login_Token();
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
+            _jwtServiceMock.Verify(s => s.GenerateJwtTokenForAppAsync(userId, httpContext.Request), Times.Once);
         }
 
     }

@@ -1,9 +1,11 @@
-﻿using Arzenal.Store.Api.Service.Interfaces;
-using ArzenalStoreInfrastructure.Data;
+﻿using Arzenal.Dto.DTOs.OperatingSystemDto;
 using Arzenal.Store.Api.Service.Exceptions;
+using Arzenal.Store.Api.Service.Interfaces;
 using Arzenal.Store.Api.Service.Mapping.OperatingSystemMapping;
-using Arzenal.Dto.DTOs.OperatingSystemDto;
+using ArzenalStoreInfrastructure.Data;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 
 namespace Arzenal.Store.Api.Service.Services.OperatingSystemService

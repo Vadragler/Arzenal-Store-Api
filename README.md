@@ -1,84 +1,77 @@
-# Arzenal-Store-Api
+# Arzenal Store API
 
-![.NET](https://img.shields.io/badge/.NET-8.0-blueviolet?logo=dotnet&logoColor=white)
-![ASP.NET Core](https://img.shields.io/badge/ASP.NET%20Core-8.0-blue?logo=dotnet)
-![MySQL](https://img.shields.io/badge/Database-MySQL-blue?logo=mysql&logoColor=white)
-![Docker](https://img.shields.io/badge/Container-Docker-blue?logo=docker)
-![License](https://img.shields.io/badge/Licence-Utilisation%20interdite-red)
-![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey)
+API ASP.NET Core 10 pour le catalogue Arzenal Store, son authentification et la distribution des applications.
 
-**Arzenal-Store-Api** est une API RESTful développée en C# avec ASP.NET Core 8.0.  
-Elle permet la gestion des applications ainsi que l’inscription, la connexion et l’authentification des utilisateurs à l’aide de JWT.
+## Fonctionnalités
 
----
+- Authentification JWT par cookies `HttpOnly` et refresh-tokens à usage unique.
+- Mots de passe hachés avec Argon2id ; refresh-tokens hachés avant stockage.
+- Gestion des applications, catégories, langues, systèmes et tags.
+- Artefacts applicatifs versionnés et indexés en base : aucun téléchargement ne choisit un fichier « le plus récent » sur disque.
+- Catalogue paginé via `GET /api/apps/page?page=1&pageSize=20` (maximum 100 éléments).
+- Upload borné, streamé et analysé par ClamAV en production.
+- Limitation de débit sur les flux sensibles.
+- Documentation Swagger disponible uniquement en développement.
+- Sondes `GET /health/live` et `GET /health/ready`.
 
-## ✨ Fonctionnalités principales
+## Prérequis
 
-- 🔐 Authentification via JSON Web Token (JWT) : inscription et connexion  
-- 📦 Gestion des applications (Apps) : ajout, consultation, modification, suppression  
-- 🗃️ Support des entités associées : **catégories**, **langues**, **systèmes d’exploitation**, **tags**
+- SDK .NET 10.
+- MySQL 8 pour l'exécution locale.
+- Docker Desktop avec son moteur Linux démarré pour les tests d'intégration : les bases de test sont créées automatiquement avec Testcontainers.
+- ClamAV pour un environnement de production.
 
----
+## Configuration locale
 
-## 🛠️ Technologies utilisées
+Le modèle sans secret est dans [appsettings.example.json](ArzenalStoreApi/appsettings.example.json). Ne copiez jamais de mots de passe, clés JWT ou clé de hachage dans Git. `appsettings.Development.json` est ignoré par Git ; les secrets peuvent aussi être stockés avec User Secrets.
 
-- ASP.NET Core 8.0  
-- Entity Framework Core  
-- MySQL  
-- JWT (sans refresh token pour l’instant)  
-- Docker (Alpine + conteneur MySQL)  
-- xUnit pour les tests unitaires  
+Les clés `Jwt:SecretKey` et `Jwt-App-Login:SecretKey` doivent contenir au moins 32 caractères. `RefreshToken:HashKey` doit être une clé aléatoire de 32 octets encodée en Base64. Par exemple, sous PowerShell :
 
----
+```powershell
+$refreshHashKey = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+dotnet user-secrets set --project ArzenalStoreApi "Jwt:SecretKey" "une-cle-longue-et-aleatoire-de-plus-de-32-caracteres"
+dotnet user-secrets set --project ArzenalStoreApi "Jwt-App-Login:SecretKey" "une-autre-cle-longue-et-aleatoire-de-plus-de-32-caracteres"
+dotnet user-secrets set --project ArzenalStoreApi "RefreshToken:HashKey" $refreshHashKey
+dotnet user-secrets set --project ArzenalStoreApi "ConnectionStrings:StoreConnection" "Server=localhost;Port=3306;Database=arzenal_store_db;User Id=...;Password=...;"
+dotnet user-secrets set --project ArzenalStoreApi "ConnectionStrings:AuthConnection" "Server=localhost;Port=3306;Database=arzenal_auth_db;User Id=...;Password=...;"
+```
 
-## 📦 Dépendances principales
+Configurez aussi `AllowedOrigins`, `CookieDomain`, `Frontend:PublicBaseUrl`, `Storage:AppFilesPath`, `AppLogin:AllowedAppIds` et, derrière un proxy, `ReverseProxy:KnownProxies`. En production, `Storage:RequireMalwareScan` et `MalwareScan:Enabled` doivent tous deux être à `true`.
 
-- FluentValidation  
+## Base de données et démarrage
 
----
+Appliquez les migrations pour chacun des deux contextes :
 
-## 📜 Scripts SQL
+```powershell
+dotnet ef database update --project ArzenalStoreInfrastructure --startup-project ArzenalStoreApi --context ApplicationDbContext
+dotnet ef database update --project ArzenalStoreInfrastructure --startup-project ArzenalStoreApi --context AuthDbContext
+dotnet run --project ArzenalStoreApi
+```
 
-Les scripts de création des schémas (tables, relations, contraintes) sont disponibles dans le dossier **`/database`** du dépôt :
+Avec le profil HTTP par défaut, Swagger est accessible sur `http://localhost:5181/swagger`. Le port reste configurable par les profils de lancement, `ASPNETCORE_URLS` ou les variables de ports ASP.NET ; il n'est pas codé dans l'application.
 
-- `schema_arzenal_auth_db.sql` — structure de la base d’authentification  
-- `schema_arzenal_store_db.sql` — structure de la base de gestion des applications  
+Un téléchargement d'application cible explicitement son artefact :
 
----
+```text
+GET /api/appfiles/download/{appId}/versions/{version}/platforms/{platform}
+```
 
-## ⚙️ Lancement du projet
+Après l'application de la migration `AddAppArtifactMetadata`, réimportez les fichiers déjà présents sur le volume de stockage : leurs métadonnées n'étaient auparavant pas stockées en base.
 
-1. Cloner ce dépôt  
-2. Ouvrir la solution avec Visual Studio 2022 ou plus récent  
-3. Adapter la `connection string` dans `appsettings.json`  
-4. Exécuter le projet  
+## Tests
 
-ℹ️ L'API nécessite que les bases de données soient disponibles, soit en local, soit dans des conteneurs Docker.
-🔑 Inscription via token d'invitation
-Pour vous inscrire, vous devez d'abord générer un token d’invitation via Swagger en utilisant le contrôleur InviteTokenController et son endpoint Generate.
-Le token est valide pendant 7 jours (ce délai est défini dans la structure de la table).
-L'API retournera une URL contenant le token en paramètre. Il vous suffira d’utiliser cette URL pour afficher le formulaire d’inscription.
+```powershell
+dotnet test ArzenalStoreApi.TestUnitaire/Arzenal.Store.Api.TestUnitaire.csproj
+dotnet test Arzenal-Store-TestApi/Arzenal.Store.Api.TestIntegration.csproj
+```
 
-📌 Important :
-Pensez à adapter le port dans l’URL retournée si celui-ci ne correspond pas à la configuration de votre environnement local ou distant.
+Les tests d'intégration ne dépendent pas d'une base ou d'un port local : Testcontainers lance MySQL 8, crée deux bases isolées, applique les migrations, puis supprime le conteneur. Docker doit simplement être opérationnel.
 
----
+## Déploiement
 
-## 🧪 Environnement de développement
-
-### 1. Exécution locale
-
-- Une base MySQL (port 3306) est nécessaire — vous pouvez l'exécuter dans un conteneur Docker.  
-- Adapter la chaîne de connexion dans `appsettings.json`.
-
-### 2. Conteneur de production
-
-- L’API tourne dans un conteneur Alpine.  
-- Connexion à une base MySQL dans un réseau Docker privé.  
-- Aucun port exposé vers l’extérieur, sauf ceux requis.  
-
----
-
-## 🔧 À venir
-
-- 🔁 Gestion automatique du rafraîchissement du token JWT  
+- Injectez tous les secrets par le mécanisme de votre plateforme (variables d'environnement, coffre de secrets, etc.).
+- Gardez MySQL, ClamAV et les interfaces d'administration sur un réseau privé.
+- Exposez uniquement le reverse proxy public ; renseignez précisément ses IP dans `ReverseProxy:KnownProxies`.
+- La composition Docker cloisonnée est disponible dans [deploy/README.md](deploy/README.md). Elle sépare le réseau proxy/API du réseau interne MySQL/ClamAV et ne contient aucun secret.
+- Utilisez `/health/live` pour savoir si le processus est vivant et `/health/ready` pour savoir si les deux bases sont joignables.
+- Consultez la CI GitHub Actions avant toute mise en production : build, tests unitaires, Testcontainers et audit NuGet y sont exécutés.

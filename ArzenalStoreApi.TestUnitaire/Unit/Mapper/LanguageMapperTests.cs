@@ -9,7 +9,8 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Mapper
     {
         private readonly LanguageMapper _mapper = new LanguageMapper();
 
-        public void ToReadLanguageDto_Maps_AllPrperties() 
+        [Fact]
+        public void ToReadLanguageDto_Maps_AllPrperties()
         {
             // Arrange
             var language = new Language
@@ -26,6 +27,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Mapper
             Assert.Equal(dto.Name, language.Name);
         }
 
+        [Fact]
         public void ToLanguage_Maps_CreateDto_To_Language()
         {
             // Arrange
@@ -38,9 +40,10 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Mapper
             var dto = _mapper.ToLanguage(language);
 
             // Assert
-            Assert.Equal(dto.Name,language.Name);
+            Assert.Equal(dto.Name, language.Name);
         }
 
+        [Fact]
         public void UpdateLanguageFromDto_Maps_Update_Name()
         {
             // Arrange

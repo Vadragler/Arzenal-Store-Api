@@ -1,8 +1,9 @@
-﻿using Arzenal.Dto.DTOs.CategorieDto;
+using Arzenal.Dto.DTOs.CategorieDto;
+using Arzenal.Store.Api.TestIntegration.Infrastructure;
 using System.Net;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using Arzenal.Store.Api.TestIntegration.Infrastructure;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.CategoriesControllerTests
 {
@@ -21,19 +22,29 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.CategoriesCo
         public async Task DeleteCategories_ReturnsNoContent_WhenLanguageExists()
         {
             // Arrange
-            var newCategorie = new CreateCategorieDto
+
+            var dto = new CreateCategorieDto
             {
                 Name = "Categorie to Delete",
             };
-            // Créer l'application via POST pour avoir un élément à supprimer
-            var jsonContent = new StringContent(
-                JsonSerializer.Serialize(newCategorie),
-                Encoding.UTF8,
-                "application/json");
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
 
-            var postResponse = await _client.PostAsync("api/categories", jsonContent);
-            postResponse.EnsureSuccessStatusCode();
-            var responseJson = await postResponse.Content.ReadAsStringAsync();
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(dto);
+
+            // 2️⃣ Calculer signature
+            var url = "api/categories/";
+
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var response = await _client.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            var responseJson = await response.Content.ReadAsStringAsync();
             var responseObject = JsonSerializer.Deserialize<JsonElement>(responseJson);
             var id = responseObject.GetProperty("Id");
             // Act

@@ -33,7 +33,7 @@ namespace Arzenal.Store.Api.Service.Services.Accounts
                 LastSeen = rt.LastUsed,
                 IsActive = rt.IsActive,
                 Type = rt.Type, // PC, Browser, Mobile
-                IsCurrentDevice = _jwtCookieService.GetCurrentCookie(rt.Token)
+                IsCurrentDevice = _jwtCookieService.GetCurrentCookie(rt.TokenHash)
             }).ToList();
         }
 
@@ -46,7 +46,9 @@ namespace Arzenal.Store.Api.Service.Services.Accounts
                 .FirstOrDefaultAsync(rt => rt.Id == deviceId && rt.UserId == UserId);
             if (token == null)
                 throw new NotFoundException("appareil non trouvé");
-            _dbContext.RefreshTokens.Remove(token);
+            token.IsRevoked = true;
+            token.RevokedAt = DateTime.UtcNow;
+            token.UpdatedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync();
             return true;
         }

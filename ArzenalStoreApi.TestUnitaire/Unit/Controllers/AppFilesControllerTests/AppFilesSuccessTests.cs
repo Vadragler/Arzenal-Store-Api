@@ -37,7 +37,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AppFilesControllerTest
             // Assert
             Assert.NotNull(result);
 
-            
+
             var data = Assert.IsType<ReadAppFilePathDto>(result.Value);
             Assert.Equal(appId, data.Id);
             Assert.Equal(fakePath, data.FilePath);
@@ -53,7 +53,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AppFilesControllerTest
             var stream = new MemoryStream(content);
 
             _serviceMock
-                .Setup(s => s.Download(appId))
+                .Setup(s => s.Download(appId, "1.0.0", "windows"))
                 .ReturnsAsync(new AppFileStreamResult(
                     stream,
                     "app.exe",
@@ -61,7 +61,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AppFilesControllerTest
                 ));
 
             // Act
-            var result = await _controller.DownloadApp(appId);
+            var result = await _controller.DownloadApp(appId, "1.0.0", "windows");
 
             // Assert
             var fileResult = Assert.IsType<FileStreamResult>(result);
@@ -98,7 +98,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AppFilesControllerTest
             };
 
             // Act
-            var result = await controller.UploadFile(uploadFileDto.AppId, "1.0.0", "app","app.txt")
+            var result = await controller.UploadFile(uploadFileDto.AppId, "1.0.0", "app", "app.txt")
                          as CreatedAtActionResult;
 
             // Assert

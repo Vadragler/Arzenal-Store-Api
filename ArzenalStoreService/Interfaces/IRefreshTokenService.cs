@@ -1,5 +1,5 @@
 ﻿using Arzenal.Store.Api.Domain.Models.Requests;
-using Arzenal.Dto.DTOs.AuthDto;
+using Arzenal.Store.Api.Service.Models.Auth;
 using Microsoft.AspNetCore.Http;
 
 namespace Arzenal.Store.Api.Service.Interfaces
@@ -7,10 +7,10 @@ namespace Arzenal.Store.Api.Service.Interfaces
     public interface IRefreshTokenService
     {
         
-        Task<RefreshTokenCookieData> GenerateRefreshToken(CreateRefreshTokenDto dto);
+        Task<RefreshTokenCookieData> GenerateRefreshToken(RefreshTokenCreationRequest request);
         Task<RefreshTokenCookieData?> RotateRefreshTokenAsync(HttpContext context);
-        Task<bool> RevokeRefreshTokenAsync(string token,Guid? userId);
-        Task<bool> ValidateRefreshTokenAsync(string token, string fingerprint);
+        Task<bool> RevokeRefreshTokenAsync(string refreshToken,Guid? userId);
+        Task<bool> ValidateRefreshTokenAsync(string tokenString, string fingerprint);
     }
 
 }

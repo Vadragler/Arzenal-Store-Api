@@ -1,9 +1,12 @@
-﻿using Arzenal.Store.Api.Domain.Models;
-using ArzenalStoreInfrastructure.Data;
+using Arzenal.Dto.DTOs.AppDto;
+using Arzenal.Store.Api.Domain.Models;
+using Arzenal.Store.Api.Service.Interfaces;
 using Arzenal.Store.Api.Service.Mapping.AppMaping;
 using Arzenal.Store.Api.Service.Services.AppService;
-using Arzenal.Dto.DTOs.AppDto;
+using ArzenalStoreInfrastructure.Data;
+using Microsoft.AspNetCore.Http;
 using Moq;
+using System.Security.Claims;
 
 namespace Arzenal.Store.Api.TestIntegration.Infrastructure
 {
@@ -31,14 +34,32 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
                 .Returns((CreateAppDto dto) => new App
                 {
                     Id = Guid.NewGuid(),
-                    Name = dto.Name,
-                    Version = dto.Version,
+                    Name = dto.Name ?? throw new ArgumentException("Name is required for this test.", nameof(dto)),
+                    Version = dto.Version ?? throw new ArgumentException("Version is required for this test.", nameof(dto)),
                     IsVisible = dto.IsVisible,
                     CategoryId = dto.CategoryId,
-                    AppSize = (long)dto.AppSize,
+                    AppSize = dto.AppSize ?? 0,
                     ReleaseDate = DateTime.UtcNow
                 });
+            var userId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+            var deviceName = "TestDevice";
 
+            // Crée un ClaimsPrincipal avec le claim userId
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, userId.ToString()) // ou ClaimTypes.NameIdentifier selon ton code
+            };
+            var identity = new ClaimsIdentity(claims, "TestAuth");
+            var principal = new ClaimsPrincipal(identity);
+
+            // Crée le HttpContext
+            var httpContext = new DefaultHttpContext();
+            httpContext.User = principal;
+            httpContext.Request.Headers["X-Device-Name"] = deviceName;
+
+            // Mock IHttpContextAccessor
+            var httpContextAccessorMock = new Mock<IHttpContextAccessor>();
+            httpContextAccessorMock.Setup(a => a.HttpContext).Returns(httpContext);
             return new AppService(dbContext, mapperMock.Object);
         }
     }

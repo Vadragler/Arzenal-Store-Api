@@ -13,8 +13,8 @@ namespace Arzenal.Store.Api.Service.Interfaces
     {
         public Task<string> GetFilePath(Guid appId);
         public Task<FileResultDto> GetAppIcon(Guid appId);
-        public Task<AppFileStreamResult> Download(Guid appId);
-        public Task<string> UploadFile(UploadFileDto fileDto, Stream input);
+        public Task<AppFileStreamResult> Download(Guid appId, string version, string platform);
+        public Task<string> UploadFile(UploadFileDto dto, Stream input);
         public Task<bool> DeleteFile(Guid appId);
     }
 }

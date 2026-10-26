@@ -1,0 +1,98 @@
+name: arzenal
+
+services:
+  api:
+    image: ${ARZENAL_API_IMAGE:-arzenal-store-api:1.0.0}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__StoreConnection: Server=mysql;Port=3306;Database=arzenal_store_db;User Id=arzenal_api;Password=${MYSQL_APP_PASSWORD:?MYSQL_APP_PASSWORD is required};
+      ConnectionStrings__AuthConnection: Server=mysql;Port=3306;Database=arzenal_auth_db;User Id=arzenal_api;Password=${MYSQL_APP_PASSWORD:?MYSQL_APP_PASSWORD is required};
+      Jwt__Issuer: ${JWT_ISSUER:-arzenal-api}
+      Jwt__SecretKey: ${JWT_SECRET:?JWT_SECRET is required}
+      Jwt-App-Login__Issuer: ${APP_LOGIN_JWT_ISSUER:-arzenal-api}
+      Jwt-App-Login__SecretKey: ${APP_LOGIN_JWT_SECRET:?APP_LOGIN_JWT_SECRET is required}
+      RefreshToken__HashKey: ${REFRESH_TOKEN_HASH_KEY:?REFRESH_TOKEN_HASH_KEY is required}
+      AppLogin__AllowedAppIds__0: ${APP_LOGIN_ALLOWED_ID:-ArzenalStoreManager}
+      AllowedOrigins__0: ${FRONTEND_ORIGIN:?FRONTEND_ORIGIN is required}
+      CookieDomain: ${COOKIE_DOMAIN:?COOKIE_DOMAIN is required}
+      Frontend__PublicBaseUrl: ${FRONTEND_PUBLIC_BASE_URL:?FRONTEND_PUBLIC_BASE_URL is required}
+      ReverseProxy__KnownProxies__0: ${REVERSE_PROXY_IP:?REVERSE_PROXY_IP is required}
+      Storage__AppFilesPath: /var/lib/arzenal/apps
+      Storage__RequireMalwareScan: "true"
+      MalwareScan__Enabled: "true"
+      MalwareScan__Host: clamav
+      MalwareScan__Port: "3310"
+      Database__ApplyMigrationsOnStartup: "true"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      clamav:
+        condition: service_started
+    expose:
+      - "8080"
+    volumes:
+      - app_artifacts:/var/lib/arzenal/apps
+    tmpfs:
+      - /tmp
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      edge:
+        aliases:
+          - arzenal-api
+      database: {}
+      malware_scan: {}
+
+  mysql:
+    image: mysql:8.0.36
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: arzenal_store_db
+      MYSQL_USER: arzenal_api
+      MYSQL_PASSWORD: ${MYSQL_APP_PASSWORD:?MYSQL_APP_PASSWORD is required}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+    command: --skip-name-resolve
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql-init/01-create-auth-database.sql:/docker-entrypoint-initdb.d/01-create-auth-database.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root --password=\"$$MYSQL_ROOT_PASSWORD\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      database: {}
+
+  clamav:
+    image: clamav/clamav:1.4.2
+    restart: unless-stopped
+    expose:
+      - "3310"
+    networks:
+      malware_scan: {}
+
+networks:
+  # Seul le reverse proxy et l'API doivent rejoindre ce réseau.
+  edge:
+    name: arzenal_edge
+    driver: bridge
+  # Seuls l'API et MySQL peuvent se joindre sur ce réseau interne.
+  database:
+    name: arzenal_database
+    driver: bridge
+    internal: true
+  # Seuls l'API et ClamAV peuvent se joindre sur ce réseau interne.
+  malware_scan:
+    name: arzenal_malware_scan
+    driver: bridge
+    internal: true
+
+volumes:
+  mysql_data:
+  app_artifacts:

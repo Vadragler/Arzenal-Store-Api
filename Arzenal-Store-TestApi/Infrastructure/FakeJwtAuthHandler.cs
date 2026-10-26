@@ -78,7 +78,9 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
 
                 try
                 {
-                    var key = Encoding.UTF8.GetBytes(configuration["Jwt-App-Login:SecretKey"]);
+                    var appLoginSecret = configuration["Jwt-App-Login:SecretKey"]
+                        ?? throw new InvalidOperationException("La clé JWT AppLogin de test est absente.");
+                    var key = Encoding.UTF8.GetBytes(appLoginSecret);
                     var tokenHandler = new JwtSecurityTokenHandler();
                     var principal = tokenHandler.ValidateToken(jwt, new TokenValidationParameters
                     {
@@ -112,7 +114,9 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
 
                 try
                 {
-                    var key = Encoding.UTF8.GetBytes(configuration["Jwt:SecretKey"]);
+                    var jwtSecret = configuration["Jwt:SecretKey"]
+                        ?? throw new InvalidOperationException("La clé JWT de test est absente.");
+                    var key = Encoding.UTF8.GetBytes(jwtSecret);
                     var tokenHandler = new JwtSecurityTokenHandler();
                     var principal = tokenHandler.ValidateToken(jwt, new TokenValidationParameters
                     {

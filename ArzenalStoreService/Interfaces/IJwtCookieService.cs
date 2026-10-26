@@ -3,6 +3,6 @@
     public interface IJwtCookieService
     {
         Guid GetUserIdFromCookie();
-        bool GetCurrentCookie(string token);
+        bool GetCurrentCookie(string tokenHash);
     }
 }

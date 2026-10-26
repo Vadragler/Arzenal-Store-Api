@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <SharedDtosRoot Condition="'$(SharedDtosRoot)' == ''">$(MSBuildThisFileDirectory)..\Arzenal-Store-Shared-Dtos</SharedDtosRoot>
+    <SharedDtosProjectPath Condition="'$(SharedDtosProjectPath)' == ''">$(SharedDtosRoot)\Arzenal-Store-Shared-Dtos\Arzenal.Dto.csproj</SharedDtosProjectPath>
+  </PropertyGroup>
+</Project>

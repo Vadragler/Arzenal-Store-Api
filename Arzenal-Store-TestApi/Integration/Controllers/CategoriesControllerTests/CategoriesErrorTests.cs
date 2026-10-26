@@ -1,6 +1,7 @@
-﻿using System.Net;
-using System.Text;
 using Arzenal.Store.Api.TestIntegration.Infrastructure;
+using System.Net;
+using System.Text;
+using System.Text.Json;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.CategoriesControllerTests
 {
@@ -68,16 +69,30 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.CategoriesCo
         // ---------- POST Tests ----------
 
         [Fact]
-        public async Task PostCategorie_ReturnUnsupportedMediaType_WhenContentTypeIsInvalid()
+        public async Task PostCategorie_ReturnBadRequest_WhenNameIsEmpty()
         {
             // Arrange
-            var invalidContent = new StringContent("{ \"Name\": \"Software\" }", Encoding.UTF8, "text/plain");
+            var invalidDto = new { Name = "" }; // Champ Name vide
+            var jsonBody = JsonSerializer.Serialize(invalidDto);
+            var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
+
+            // Calculer signature HMAC
+
+            var request = new HttpRequestMessage(HttpMethod.Post, "api/categories/")
+            {
+                Content = content
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
 
             // Act
-            var response = await _client.PostAsync("api/categories", invalidContent);
+            var response = await _client.SendAsync(request);
 
             // Assert
-            Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+            // Ici on attend que la validation du DTO échoue côté API (400 Bad Request)
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
         // ---------- PUT Tests ----------
@@ -85,11 +100,29 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.CategoriesCo
         public async Task PutCategorie_ReturnBadRequest_WhenBodyIsMissing()
         {
             // Arrange
-            var id = Guid.NewGuid();
+            var getresponse = await _client.GetAsync("api/categories");
+            var responseJson = await getresponse.Content.ReadAsStringAsync();
+            var responseArray = JsonSerializer.Deserialize<JsonElement>(responseJson);
+            var id = responseArray[0].GetProperty("Id");
+
             var jsonContent = new StringContent("", Encoding.UTF8, "application/json");
 
-            // Act
-            var response = await _client.PutAsync($"api/categories/{id}", jsonContent);
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
+
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(jsonContent);
+
+            // 2️⃣ Calculer signature
+            var url = $"api/categories/{id}";
+
+            var request = new HttpRequestMessage(HttpMethod.Put, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var response = await _client.SendAsync(request);
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

@@ -1,8 +1,8 @@
-﻿using Arzenal.Store.Api.Service.Interfaces;
-using ArzenalStoreInfrastructure.Data;
+﻿using Arzenal.Dto.DTOs.CategorieDto;
 using Arzenal.Store.Api.Service.Exceptions;
+using Arzenal.Store.Api.Service.Interfaces;
 using Arzenal.Store.Api.Service.Mapping.CategoryMapping;
-using Arzenal.Dto.DTOs.CategorieDto;
+using ArzenalStoreInfrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace Arzenal.Store.Api.Service.Services.CategoryService

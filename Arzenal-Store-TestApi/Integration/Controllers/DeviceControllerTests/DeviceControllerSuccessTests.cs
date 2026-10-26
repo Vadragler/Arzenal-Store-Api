@@ -22,10 +22,11 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.DeviceContro
             // Assert
             response.EnsureSuccessStatusCode();
             var devices = await response.Content.ReadFromJsonAsync<List<ReadDeviceDto>>();
+            Assert.NotNull(devices);
             Assert.NotEmpty(devices);
             var device = devices.First(d => d.DeviceName == "IntegrationTestDevice");
             Assert.Equal("IntegrationTestDevice", device.DeviceName);
-            Assert.Equal("127.0.0.1", device.LastUsedIp);
+            Assert.Matches(@"^10\.0\.\d{1,3}\.\d{1,3}$", device.LastUsedIp);
             Assert.Equal(dateNow.ToString("m"), device.LastSeen.ToString("m"));
             Assert.True(device.IsActive);
             Assert.Equal("Chrome", device.Type);
@@ -46,7 +47,9 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.DeviceContro
 
             Guid token = Guid.Parse("a1b2c3d4-e5f6-4789-9012-3456789abcde");
             var updated = await db.RefreshTokens.FindAsync(token);
-            Assert.Null(updated);
+            Assert.NotNull(updated);
+            Assert.True(updated.IsRevoked);
+            Assert.NotNull(updated.RevokedAt);
         }
     }
 }

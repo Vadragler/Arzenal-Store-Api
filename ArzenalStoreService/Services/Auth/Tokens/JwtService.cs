@@ -6,16 +6,22 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using System.Globalization;
 using System.Security.Claims;
 using System.Text;
 
 namespace Arzenal.Store.Api.Service.Services.Auth.Tokens
 {
-    public class JwtService(AuthDbContext context, IConfiguration configuration, ICookieService cookieService) : IJwtService
+    public class JwtService(
+        AuthDbContext context,
+        IConfiguration configuration,
+        ICookieService cookieService,
+        IRefreshTokenHasher refreshTokenHasher) : IJwtService
     {
         private readonly AuthDbContext _dbContext = context;
         private readonly IConfiguration _configuration = configuration;
         private readonly ICookieService _cookieService = cookieService;
+        private readonly IRefreshTokenHasher _refreshTokenHasher = refreshTokenHasher;
         public async Task<string> GenerateJwtTokenAsync(Guid userId, List<string> audiences)
         {
             var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Id == userId);
@@ -45,7 +51,7 @@ namespace Arzenal.Store.Api.Service.Services.Auth.Tokens
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddHours(double.Parse(_configuration["Jwt:ExpiryHours"] ?? "1")),
+                Expires = DateTime.UtcNow.AddHours(double.Parse(_configuration["Jwt:ExpiryHours"] ?? "1", CultureInfo.InvariantCulture)),
                 Issuer = _configuration["Jwt:Issuer"],
                 Audience = null, // facultatif, on gère via les claims
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
@@ -56,16 +62,46 @@ namespace Arzenal.Store.Api.Service.Services.Auth.Tokens
         }
 
 
-        public async Task<string> GenerateJwtTokenForAppAsync(HttpRequest request)
+        public async Task<string> GenerateJwtTokenForAppAsync(Guid userId, HttpRequest request)
         {
-            var appIdHeader = request.Headers["X-App-Id"].FirstOrDefault();
+            if (userId == Guid.Empty)
+                throw new UnauthorizedAccessException("Identité utilisateur invalide.");
+
+            var appIdHeader = request.Headers["X-App-Id"].FirstOrDefault()?.Trim();
             if (string.IsNullOrEmpty(appIdHeader))
                 throw new UnauthorizedAccessException("Le header X-App-Id est requis.");
 
-            var refreshtoken = _cookieService.GetRefreshToken(request);
-            var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Id == refreshtoken.UserId);
+            var allowedAppIds = _configuration.GetSection("AppLogin:AllowedAppIds")
+                .GetChildren()
+                .Select(section => section.Value)
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Cast<string>()
+                .ToArray();
+            if (!allowedAppIds.Contains(appIdHeader, StringComparer.Ordinal))
+                throw new UnauthorizedAccessException("Application non autorisée.");
+
+            var refreshToken = _cookieService.GetRefreshToken(request);
+            if (refreshToken == null || string.IsNullOrWhiteSpace(refreshToken.Token))
+                throw new UnauthorizedAccessException("Un refresh token valide est requis.");
+
+            var now = DateTime.UtcNow;
+            var refreshTokenHash = _refreshTokenHasher.Hash(refreshToken.Token);
+            var hasActiveRefreshToken = await _dbContext.RefreshTokens.AnyAsync(token =>
+                token.UserId == userId &&
+                token.TokenHash == refreshTokenHash &&
+                !token.IsRevoked &&
+                (token.ExpiresAt == null || token.ExpiresAt > now));
+
+            if (!hasActiveRefreshToken)
+                throw new UnauthorizedAccessException("Un refresh token valide est requis.");
+
+            var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Id == userId);
             if (user == null)
-                throw new UnauthorizedAccessException($"Utilisateur non trouvé {user}");
+                throw new UnauthorizedAccessException("Utilisateur non trouvé.");
+
+            var email = user.Email;
+            if (string.IsNullOrWhiteSpace(email))
+                throw new InvalidOperationException("L'utilisateur ne possède pas d'adresse e-mail valide.");
 
             var secretKey = _configuration["Jwt-App-Login:SecretKey"];
             if (string.IsNullOrEmpty(secretKey))
@@ -79,7 +115,7 @@ namespace Arzenal.Store.Api.Service.Services.Auth.Tokens
                 Subject = new ClaimsIdentity(new[]
                 {
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Email, email),
                     new Claim(ClaimTypes.Role, user.Role.ToString()),
                     new Claim(JwtRegisteredClaimNames.Aud, "app-login"),
                     new Claim("appId", appIdHeader)

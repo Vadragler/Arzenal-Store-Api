@@ -1,5 +1,6 @@
 ﻿using Arzenal.Store.Api.Service.Interfaces;
 using Arzenal.Dto.DTOs.AppDto;
+using Arzenal.Dto.DTOs.Pagination;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using ArzenalStoreApi.Controllers.Apps;
@@ -38,6 +39,28 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AppsControllerTests
         }
 
         [Fact]
+        public async Task GetAppsPage_ReturnsBoundedPage()
+        {
+            var page = new PagedResultDto<ReadAppDto>
+            {
+                Items = [new ReadAppDto { Id = Guid.NewGuid(), Name = "App1" }],
+                Page = 2,
+                PageSize = 1,
+                TotalCount = 3
+            };
+            _appServiceMock
+                .Setup(service => service.GetAppsPageAsync(2, 1, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(page);
+
+            var result = await _controller.GetAppsPage(2, 1);
+
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var data = Assert.IsType<PagedResultDto<ReadAppDto>>(okResult.Value);
+            Assert.Equal(3, data.TotalCount);
+            Assert.Equal("App1", data.Items[0].Name);
+        }
+
+        [Fact]
         public async Task GetAppById_ReturnsOk_WithApp()
         {
             // Arrange
@@ -58,7 +81,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AppsControllerTests
         public async Task CreateApp_ReturnsCreatedAtAction()
         {
             // Arrange
-            var createDto = new CreateAppDto { Name = "NewApp", CategoryId = Guid.NewGuid(),Version = "Alpha" };
+            var createDto = new CreateAppDto { Name = "NewApp", CategoryId = Guid.NewGuid(), Version = "Alpha" };
             var readDto = new ReadAppDto { Id = Guid.NewGuid(), Name = "NewApp" };
             _appServiceMock.Setup(s => s.CreateAppAsync(createDto)).ReturnsAsync(readDto);
 

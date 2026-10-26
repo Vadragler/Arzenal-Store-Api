@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SharedDtosRoot: ${{ github.workspace }}/shared-dtos
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout shared DTO contracts
+        uses: actions/checkout@v4
+        with:
+          repository: Vadragler/Arzenal-Store-Shared-Dtos
+          ref: main
+          path: shared-dtos
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore ArzenalStoreApi/Arzenal.Store.Api.csproj
+
+      - name: Verify formatting
+        run: dotnet format ArzenalStoreApi/Arzenal.Store.Api.csproj --verify-no-changes --no-restore --verbosity minimal
+
+      - name: Build
+        run: dotnet build ArzenalStoreApi/Arzenal.Store.Api.csproj --configuration Release --no-restore -warnaserror
+
+      - name: Verify EF Core migrations
+        run: |
+          dotnet tool restore
+          dotnet tool run dotnet-ef migrations has-pending-model-changes --project ArzenalStoreInfrastructure/Arzenal.Store.Api.Infrastructure.csproj --startup-project ArzenalStoreApi/Arzenal.Store.Api.csproj --context ApplicationDbContext
+          dotnet tool run dotnet-ef migrations has-pending-model-changes --project ArzenalStoreInfrastructure/Arzenal.Store.Api.Infrastructure.csproj --startup-project ArzenalStoreApi/Arzenal.Store.Api.csproj --context AuthDbContext
+
+      - name: Validate hardened Docker Compose topology
+        run: docker compose --env-file deploy/.env.example -f deploy/compose.yaml config --quiet
+
+      - name: Unit tests
+        run: dotnet test ArzenalStoreApi.TestUnitaire/Arzenal.Store.Api.TestUnitaire.csproj --configuration Release --no-restore --logger "trx;LogFileName=unit.trx" --collect:"XPlat Code Coverage"
+
+      - name: Integration tests (MySQL Testcontainers)
+        run: dotnet test Arzenal-Store-TestApi/Arzenal.Store.Api.TestIntegration.csproj --configuration Release --no-restore --logger "trx;LogFileName=integration.trx"
+
+      - name: Fail on High or Critical NuGet vulnerabilities
+        shell: bash
+        run: |
+          dotnet list ArzenalStoreApi/Arzenal.Store.Api.csproj package --vulnerable --include-transitive --format json > nuget-vulnerabilities.json
+          if grep -Eq '"severity": "(High|Critical)"' nuget-vulnerabilities.json; then
+            cat nuget-vulnerabilities.json
+            exit 1
+          fi
+
+      - name: Publish test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            **/TestResults/*.trx
+            **/TestResults/**/coverage.cobertura.xml
+          if-no-files-found: warn

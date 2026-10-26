@@ -46,7 +46,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Mapper
             // Assert
             Assert.Equal(dto.Name, app.Name);
             Assert.Equal(dto.Version, app.Version);
-            
+
         }
 
         [Fact]
@@ -79,7 +79,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Mapper
         {
             // Arrange
             var originalId = Guid.NewGuid();
-            var app = new App { Id = originalId, Name = "OldApp",Version = "1.0.0"};
+            var app = new App { Id = originalId, Name = "OldApp", Version = "1.0.0" };
             var dto = new UpdateAppDto { Name = "NewApp" };
 
             // Act

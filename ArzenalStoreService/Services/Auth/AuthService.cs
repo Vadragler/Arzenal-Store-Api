@@ -4,9 +4,10 @@ using Arzenal.Store.Api.Domain.Models.Requests;
 using Arzenal.Store.Api.Infrastructure.Data;
 using Arzenal.Store.Api.Service.Exceptions;
 using Arzenal.Store.Api.Service.Interfaces;
+using Arzenal.Store.Api.Service.Models.Auth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using System;
+using System.Security.Claims;
 
 namespace Arzenal.Store.Api.Service.Services.Auth
 {
@@ -90,49 +91,21 @@ namespace Arzenal.Store.Api.Service.Services.Auth
             if (user == null || !_passwordService.Verify(password, user.PasswordHash!))
                 throw new UnauthorizedAccessException("Invalid email or password");
 
-            dto.UserAgent = Response.HttpContext?.Request.Headers["User-Agent"].ToString() ?? "";
+            var context = Response.HttpContext
+                ?? throw new InvalidOperationException("Le contexte HTTP est requis pour créer un refresh token.");
+            var refreshTokenRequest = CreateRefreshTokenRequest(context, user.Id, dto);
 
             // 2️⃣ Génère l'accessToken
             List<string> audience = new List<string>()
                 {
-                GetAudienceFromUserAgent(dto.UserAgent),
+                GetAudienceFromUserAgent(refreshTokenRequest.UserAgent),
                 "ArzenalAuth"
                 };
             var accessToken = await _JwtService.GenerateJwtTokenAsync(user.Id, audience);
 
-            // 3️⃣ Cherche un refreshToken existant pour ce device + fingerprint
-            var existingToken = await _dbContext.RefreshTokens
-                .FirstOrDefaultAsync(rt =>
-                    rt.UserId == user.Id &&
-                    rt.Fingerprint == dto.Fingerprint &&
-                    rt.DeviceName == dto.DeviceName);
-
-            RefreshTokenCookieData refreshToken;
-
-            if (existingToken != null)
-            {
-                // 4️⃣ Si un token existe, on le "rotate" : nouveau token + nouvelle expiration
-                var newToken = await _tokenService.GenerateRefreshToken(dto);
-                existingToken.Token = newToken.Token;
-                existingToken.ExpiresAt = DateTime.UtcNow.AddDays(30);
-                _dbContext.RefreshTokens.Update(existingToken);
-                await _dbContext.SaveChangesAsync();
-                refreshToken = new RefreshTokenCookieData
-                {
-                    Token = existingToken.Token,
-                    UserId = existingToken.UserId
-                };
-            }
-            else
-            {
-                // 5️⃣ Sinon, crée un nouveau refreshToken
-                dto.UserId = user.Id;
-                var newToken = await _tokenService.GenerateRefreshToken(dto);
-                if (newToken == null)
-                    throw new UnauthorizedAccessException("refresh token invalide");
-
-                refreshToken = newToken;
-            }
+            // Un nouveau login invalide les tokens actifs du même appareil et démarre une nouvelle famille.
+            var refreshToken = await _tokenService.GenerateRefreshToken(refreshTokenRequest)
+                ?? throw new UnauthorizedAccessException("refresh token invalide");
 
             if (accessToken == null || string.IsNullOrEmpty(refreshToken.Token))
                 throw new UnauthorizedAccessException("token invalide");
@@ -164,36 +137,54 @@ namespace Arzenal.Store.Api.Service.Services.Auth
 
         public async Task GenerateRefreshTokenAsync(HttpContext context, CreateRefreshTokenDto dto)
         {
-            Guid userId = Guid.Empty;
-            if (dto.UserId == Guid.Empty)
-            {
-                userId = _jwtCookieService.GetUserIdFromCookie();
-                dto.UserId = userId;
-            }
-            var refreshToken = await _tokenService.GenerateRefreshToken(dto);
-            if (dto.UserId == Guid.Empty || refreshToken == null)
+            var userId = GetAuthenticatedUserId(context.User);
+            var refreshTokenRequest = CreateRefreshTokenRequest(context, userId, dto);
+            var refreshToken = await _tokenService.GenerateRefreshToken(refreshTokenRequest);
+            if (refreshToken == null)
                 throw new UnauthorizedAccessException("Impossible de générer le token.");
             List<string> audience = new List<string>()
                 {
                     GetAudienceFromUserAgent(context.Request.Headers["User-Agent"].FirstOrDefault()),
                     "ArzenalAuth"
                 };
-            var accessToken = await _JwtService.GenerateJwtTokenAsync(dto.UserId, audience);
+            var accessToken = await _JwtService.GenerateJwtTokenAsync(userId, audience);
             if (accessToken == null || string.IsNullOrEmpty(refreshToken.Token))
                 throw new UnauthorizedAccessException("token invalide");
             _cookieService.SetAuthCookies(context.Response, accessToken, refreshToken);
         }
 
-        private string GetAudienceFromUserAgent(string? userAgent)
+        private static RefreshTokenCreationRequest CreateRefreshTokenRequest(
+            HttpContext context,
+            Guid userId,
+            CreateRefreshTokenDto dto)
+        {
+            return new RefreshTokenCreationRequest(
+                userId,
+                dto.DeviceName,
+                dto.Fingerprint,
+                context.Request.Headers["User-Agent"].FirstOrDefault(),
+                context.Connection.RemoteIpAddress?.ToString());
+        }
+
+        private static Guid GetAuthenticatedUserId(ClaimsPrincipal user)
+        {
+            var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdValue, out var userId) || userId == Guid.Empty)
+                throw new UnauthorizedAccessException("Identité utilisateur invalide.");
+
+            return userId;
+        }
+
+        private static string GetAudienceFromUserAgent(string? userAgent)
         {
             if (string.IsNullOrEmpty(userAgent))
                 return "web"; // valeur par défaut
 
-            if (userAgent.StartsWith("ArzenalStoreManager"))
+            if (userAgent.StartsWith("ArzenalStoreManager", StringComparison.Ordinal))
                 // Doit correspondre à l'audience attendue par la policy 'ArzenalStoreManager'
                 return "ArzenalStoreManager";
 
-            if (userAgent.StartsWith("ArzenalStore-WPF"))
+            if (userAgent.StartsWith("ArzenalStore-WPF", StringComparison.Ordinal))
                 // L'application WPF utilise l'audience 'app-login'
                 return "app-login";
 
@@ -221,8 +212,6 @@ namespace Arzenal.Store.Api.Service.Services.Auth
             {
                 await _tokenService.RevokeRefreshTokenAsync(refreshToken.Token!, userId);
                 _cookieService.DeleteAuthCookies(context);
-                _dbContext.RefreshTokens.RemoveRange(_dbContext.RefreshTokens.Where(rt => rt.UserId == userId && rt.Token == refreshToken.Token));
-                await _dbContext.SaveChangesAsync();
             }
         }
     }

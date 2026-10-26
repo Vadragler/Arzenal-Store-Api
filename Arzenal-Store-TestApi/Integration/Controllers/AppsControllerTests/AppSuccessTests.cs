@@ -1,10 +1,10 @@
-﻿using ArzenalStoreInfrastructure.Data;
 using Arzenal.Dto.DTOs.AppDto;
+using Arzenal.Store.Api.TestIntegration.Infrastructure;
+using ArzenalStoreInfrastructure.Data;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using Arzenal.Store.Api.TestIntegration.Infrastructure;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AppsControllerTests
 {
@@ -12,7 +12,6 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AppsControll
     {
         private readonly CustomWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
-
         public AppSuccessTests(CustomWebApplicationFactory<Program> factory)
         {
             _factory = factory;
@@ -39,18 +38,29 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AppsControll
                 TagIds = [Guid.Parse("d9b1f7c4-3f2a-4b6e-a2d1-8f5b7e9c2a1d")],
                 OsIds = [Guid.Parse("d9b1f7c4-3f2a-4b6e-a2d1-8f5b7e9c2a1d")]
             };
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
 
-            var content = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(dto);
 
-            // Act
-            var post = await _client.PostAsync("api/apps", content);
+            // 2️⃣ Calculer signature
+            var url = "api/apps/";
 
-            post.EnsureSuccessStatusCode();
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var response = await _client.SendAsync(request);
+
+            response.EnsureSuccessStatusCode();
 
             // Assert
-            Assert.Equal(HttpStatusCode.Created, post.StatusCode);
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
             //Deserialize response to get the created app ID
-            var json = await post.Content.ReadAsStringAsync();
+            var json = await response.Content.ReadAsStringAsync();
             var createdApp = JsonSerializer.Deserialize<ReadAppDto>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             Assert.NotNull(createdApp);
             Assert.Equal(dto.Name, createdApp!.Name);
@@ -108,11 +118,25 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AppsControll
             var list = JsonSerializer.Deserialize<List<ReadAppDto>>(await all.Content.ReadAsStringAsync(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
             var id = list.First().Id;
 
-            var update = new UpdateAppDto { Name = "Updated", Description = "Changed", IsVisible = false };
-            var content = new StringContent(JsonSerializer.Serialize(update), Encoding.UTF8, "application/json");
+            var update = new UpdateAppDto { Name = "Updated", Description = "Changed", IsVisible = false};
 
-            var patch = await _client.PatchAsync($"api/apps/{id}", content);
-            patch.EnsureSuccessStatusCode();
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
+
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(update);
+
+            // 2️⃣ Calculer signature
+            var url = $"api/apps/{id}";
+
+            var request = new HttpRequestMessage(HttpMethod.Patch, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var response = await _client.SendAsync(request);
+            response.EnsureSuccessStatusCode();
 
             var get = await _client.GetAsync($"api/apps/{id}");
             var app = JsonSerializer.Deserialize<ReadAppDto>(await get.Content.ReadAsStringAsync(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
@@ -142,10 +166,22 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AppsControll
                 OsIds = [Guid.Parse("d9b1f7c4-3f2a-4b6e-a2d1-8f5b7e9c2a1d")]
             };
 
-            var content = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
 
-            // Act & Assert
-            var post = await _client.PostAsync("api/apps", content);
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(dto);
+
+            // 2️⃣ Calculer signature
+            var url = $"api/apps/";
+
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var post = await _client.SendAsync(request);
             var json = await post.Content.ReadAsStringAsync();
             var id = JsonSerializer.Deserialize<JsonElement>(json).GetProperty("Id").GetGuid();
 

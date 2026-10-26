@@ -1,6 +1,8 @@
 ﻿using Arzenal.Store.Api.Domain.Models;
 using Arzenal.Store.Api.Service.Services.Auth.Passwords;
 using Arzenal.Store.Api.Infrastructure.Data;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Arzenal.Store.Api.TestIntegration.Infrastructure.DbSeeder
 {
@@ -23,7 +25,7 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure.DbSeeder
             {
                 Id = Guid.Parse("a1b2c3d4-e5f6-4789-9012-3456789abcde"),
                 UserId = user.Id,
-                Token = "valid-refresh-token",
+                TokenHash = HashRefreshToken("valid-refresh-token"),
                 Fingerprint = "Fingerprint",
                 CreatedByIp = "127.0.0.1",
                 DeviceName = "TEST-DEVICE",
@@ -36,7 +38,7 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure.DbSeeder
             {
                 Id = Guid.Parse("f1e2d3c4-b5a6-7890-1234-abcdef123456"),
                 UserId = user.Id,
-                Token = "expired-refresh-token",
+                TokenHash = HashRefreshToken("expired-refresh-token"),
                 Fingerprint = "Fingerprint-EXPIRED",
                 CreatedByIp = "127.0.0.1",
                 DeviceName = "TEST-DEVICE-EXPIRED",
@@ -53,6 +55,12 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure.DbSeeder
                 Used = false
             });
             db.SaveChanges();
+        }
+
+        private static string HashRefreshToken(string token)
+        {
+            var key = Convert.FromBase64String("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
+            return Convert.ToHexString(HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(token)));
         }
     }
 

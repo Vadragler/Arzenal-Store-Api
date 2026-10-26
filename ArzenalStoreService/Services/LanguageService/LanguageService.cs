@@ -1,10 +1,11 @@
-﻿using Arzenal.Store.Api.Service.Interfaces;
-using ArzenalStoreInfrastructure.Data;
+﻿using Arzenal.Dto.DTOs.LanguageDto;
 using Arzenal.Store.Api.Service.Exceptions;
+using Arzenal.Store.Api.Service.Interfaces;
 using Arzenal.Store.Api.Service.Mapping.LanguageMapping;
-using Arzenal.Dto.DTOs.LanguageDto;
+using ArzenalStoreInfrastructure.Data;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Arzenal.Dto.DTOs.LanguageDto;
+using System.Security.Claims;
 
 namespace Arzenal.Store.Api.Service.Services.LanguageService
 {
@@ -13,7 +14,6 @@ namespace Arzenal.Store.Api.Service.Services.LanguageService
     {
         private readonly ApplicationDbContext _context;
         private readonly ILanguageMapper _mapper;
-
         public LanguageService(ApplicationDbContext context,ILanguageMapper mapper) 
         {
             _context = context;

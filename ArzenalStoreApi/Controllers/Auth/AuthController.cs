@@ -2,7 +2,9 @@
 using Arzenal.Dto.DTOs.AuthDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Swashbuckle.AspNetCore.Annotations;
+using System.Security.Claims;
 
 namespace ArzenalStoreApi.Controllers.Auth
 {
@@ -13,13 +15,11 @@ namespace ArzenalStoreApi.Controllers.Auth
     {
         private readonly IJwtService _jwtService;
         private readonly IAuthService _authService;
-        private readonly IRequestInfoProvider _requestInfoProvider;
 
-        public AuthController(IAuthService authService,IJwtService jwtService,IRequestInfoProvider requestinfoProvider)
+        public AuthController(IAuthService authService, IJwtService jwtService)
         {
             _jwtService = jwtService;
             _authService = authService;
-            _requestInfoProvider = requestinfoProvider;
         }
 
         /// <summary>
@@ -50,14 +50,20 @@ namespace ArzenalStoreApi.Controllers.Auth
         /// </returns>
         [AllowAnonymous]
         [HttpPost("login")]
+        [EnableRateLimiting("login")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
         {
-            var infoProvider = await _requestInfoProvider.GetRequestInfo(HttpContext, request);
+            var refreshTokenRequest = new CreateRefreshTokenDto
+            {
+                DeviceName = request.DeviceName,
+                Fingerprint = request.Fingerprint
+            };
 
-            await _authService.AuthenticateAsync(Response, request.Email, request.Password, infoProvider);
+            await _authService.AuthenticateAsync(Response, request.Email, request.Password, refreshTokenRequest);
 
             return Ok(new { message = "Connexion réussie" });
         }
@@ -73,6 +79,7 @@ namespace ArzenalStoreApi.Controllers.Auth
         /// </remarks>
         [AllowAnonymous]
         [HttpPost("refresh")]
+        [EnableRateLimiting("refresh")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Refresh()
@@ -90,6 +97,7 @@ namespace ArzenalStoreApi.Controllers.Auth
         /// </returns>
         [Authorize(Policy = "AppLogin")]
         [HttpPost("GenerateRefreshToken")]
+        [EnableRateLimiting("app-login")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -173,9 +181,14 @@ namespace ArzenalStoreApi.Controllers.Auth
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         [HttpGet("create-app-login-token")]
+        [EnableRateLimiting("app-login")]
         public async Task<IActionResult> Create_App_Login_Token()
         {
-            var jwt = await _jwtService.GenerateJwtTokenForAppAsync(Request);
+            var userIdValue = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdValue, out var userId) || userId == Guid.Empty)
+                throw new UnauthorizedAccessException("Identité utilisateur invalide.");
+
+            var jwt = await _jwtService.GenerateJwtTokenForAppAsync(userId, Request);
             return Ok(new { token = jwt });
         }
     }

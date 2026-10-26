@@ -3,16 +3,20 @@ using Arzenal.Store.Api.Domain.Models;
 using Arzenal.Store.Api.Service.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Arzenal.Store.Api.Infrastructure.Data;
+using Microsoft.Extensions.Configuration;
+using System.Security.Cryptography;
 
 namespace Arzenal.Store.Api.Service.Services.Auth.Invites
 {
     public class InviteService : IInviteService
     {
         private readonly AuthDbContext _context;
+        private readonly string _frontendBaseUrl;
 
-        public InviteService(AuthDbContext context)
+        public InviteService(AuthDbContext context, IConfiguration? configuration = null)
         {
             _context = context;
+            _frontendBaseUrl = configuration?["Frontend:PublicBaseUrl"] ?? "https://arzenal.fr";
         }
 
         public async Task ValidateInviteAsync(string? token)
@@ -40,15 +44,28 @@ namespace Arzenal.Store.Api.Service.Services.Auth.Invites
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddDays(7),
                 Used = false,
-                Token = Guid.NewGuid().ToString()
+                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+                    .TrimEnd('=')
+                    .Replace('+', '-')
+                    .Replace('/', '_')
             };
 
             _context.InviteTokens.Add(inviteToken);
             await _context.SaveChangesAsync();
 
             // Crée le lien d'invitation avec le token généré
-            var inviteLink = $"http://arzenaldev.duckdns.org/signup?token={inviteToken.Token}";
-            return inviteLink;
+            if (!Uri.TryCreate(_frontendBaseUrl, UriKind.Absolute, out var baseUri) ||
+                (baseUri.Scheme != Uri.UriSchemeHttps && !baseUri.IsLoopback))
+            {
+                throw new InvalidOperationException("Frontend:PublicBaseUrl doit être une URL HTTPS valide.");
+            }
+
+            var inviteUri = new UriBuilder(baseUri)
+            {
+                Path = "signup",
+                Query = $"token={Uri.EscapeDataString(inviteToken.Token)}"
+            };
+            return inviteUri.Uri.ToString();
         }
 
         public async Task UseInviteAsync(string token)
@@ -58,7 +75,7 @@ namespace Arzenal.Store.Api.Service.Services.Auth.Invites
 
             var invite = await _context.InviteTokens
        .FirstOrDefaultAsync(i => i.Token == token);
-            if (invite == null || invite.Used)
+            if (invite == null || invite.Used || (invite.ExpiresAt.HasValue && invite.ExpiresAt <= DateTime.UtcNow))
             {
                 throw new UnauthorizedAccessException("Token invalide ou déjà utilisé.");
             }

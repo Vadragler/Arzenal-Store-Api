@@ -7,8 +7,8 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Mapper
     public class TagMapperTests
     {
         private readonly TagMapper _mapper = new TagMapper();
-        
-      
+
+
         [Fact]
         public void ToReadTagDto_Maps_AllPrperties()
         {

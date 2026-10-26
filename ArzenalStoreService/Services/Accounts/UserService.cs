@@ -1,9 +1,9 @@
-﻿using Arzenal.Store.Api.Service.Interfaces;
-using Arzenal.Store.Api.Service.Exceptions;
-using Arzenal.Dto.DTOs.AccountDto;
-using Microsoft.EntityFrameworkCore;
-using Arzenal.Dto.DTOs.AccountDto;
+﻿using Arzenal.Dto.DTOs.AccountDto;
 using Arzenal.Store.Api.Infrastructure.Data;
+using Arzenal.Store.Api.Service.Exceptions;
+using Arzenal.Store.Api.Service.Interfaces;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace Arzenal.Store.Api.Service.Services.Accounts
@@ -19,7 +19,7 @@ namespace Arzenal.Store.Api.Service.Services.Accounts
         }
         public async Task<ReadAccountDto> FindByIdAsync(string? userId)
         {
-            var id = userId != null ? Guid.Parse(userId) : Guid.Empty;
+            var id = Guid.TryParse(userId, out var parsedId) ? parsedId : Guid.Empty;
             if (id == Guid.Empty)
                 throw new ValidationException("Identifiant Invalide");
 
@@ -36,7 +36,7 @@ namespace Arzenal.Store.Api.Service.Services.Accounts
 
         public async Task DeleteAsync(string? userId)
         {
-            var id = userId != null ? Guid.Parse(userId) : Guid.Empty;
+            var id = Guid.TryParse(userId, out var parsedId) ? parsedId : Guid.Empty;
             if (id == Guid.Empty)
                 throw new ValidationException("Identifiant Invalide");
 
@@ -48,20 +48,40 @@ namespace Arzenal.Store.Api.Service.Services.Accounts
 
         public async Task PatchAsync(string? userId, UpdateAccountDto updateAccountDto)
         {
-            var id = userId != null ? Guid.Parse(userId) : Guid.Empty;
+
+            var id = Guid.TryParse(userId, out var parsedId) ? parsedId : Guid.Empty;
             if (id == Guid.Empty)
                 throw new ValidationException("Identifiant Invalide");
 
             var user = await _dbContext.Users
                 .FirstOrDefaultAsync(u => u.Id == id) ?? throw new NotFoundException("Utilisateur introuvable");
-            if (!string.IsNullOrEmpty(updateAccountDto.Username))
+            var username = string.IsNullOrWhiteSpace(updateAccountDto.Username)
+                ? null
+                : updateAccountDto.Username.Trim();
+            var email = string.IsNullOrWhiteSpace(updateAccountDto.Email)
+                ? null
+                : updateAccountDto.Email.Trim();
+
+            if (username is not null || email is not null)
             {
-                user.Username = updateAccountDto.Username;
+                var otherUsers = _dbContext.Users.Where(other => other.Id != id);
+                if (username is not null)
+                    otherUsers = otherUsers.Where(other => other.Username == username);
+                if (email is not null)
+                    otherUsers = username is null
+                        ? otherUsers.Where(other => other.Email == email)
+                        : _dbContext.Users.Where(other => other.Id != id &&
+                            (other.Username == username || other.Email == email));
+
+                var duplicate = await otherUsers.AnyAsync();
+                if (duplicate)
+                    throw new DuplicateException("Email ou nom d'utilisateur déjà utilisé.");
             }
-            if (!string.IsNullOrEmpty(updateAccountDto.Email))
-            {
-                user.Email = updateAccountDto.Email;
-            }
+
+            if (username is not null)
+                user.Username = username;
+            if (email is not null)
+                user.Email = email;
             if (!string.IsNullOrEmpty(updateAccountDto.NewPassword))
             {
                 if (updateAccountDto.ActualPassword == null)

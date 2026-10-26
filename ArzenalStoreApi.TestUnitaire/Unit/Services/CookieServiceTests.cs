@@ -43,7 +43,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
 
             // Assert
             Assert.Equal("refresh123", token!.Token);
-            Assert.Equal(userId, token.UserId);
+            Assert.Equal(Guid.Empty, token.UserId);
         }
 
         [Fact]
@@ -104,11 +104,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
 
 
             var expectedRefreshToken = Convert.ToBase64String(
-                JsonSerializer.SerializeToUtf8Bytes(new RefreshTokenCookieData
-                {
-                    Token = "refresh123",
-                    UserId = userId
-                })
+                JsonSerializer.SerializeToUtf8Bytes(new { Token = "refresh123" })
             );
             // Vérifie refreshToken en testant la valeur encodée
             responseCookies.Verify(c => c.Append(

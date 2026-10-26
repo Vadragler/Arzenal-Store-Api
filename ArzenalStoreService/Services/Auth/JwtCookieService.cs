@@ -1,24 +1,32 @@
 ﻿using Arzenal.Store.Api.Service.Interfaces;
-using Arzenal.Store.Api.Domain.Models.Requests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Text.Json;
+using System.Security.Cryptography;
 
 namespace Arzenal.Store.Api.Service.Services.Auth
 {
     public class JwtCookieService : IJwtCookieService
     {
+        private static readonly string[] ValidAudiences = ["web", "ArzenalStoreManager", "ArzenalAuth"];
         private readonly IConfiguration _configuration;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ICookieService _cookieService;
+        private readonly IRefreshTokenHasher _refreshTokenHasher;
 
-        public JwtCookieService(IConfiguration configuration, IHttpContextAccessor httpContextAccessor)
+        public JwtCookieService(
+            IConfiguration configuration,
+            IHttpContextAccessor httpContextAccessor,
+            ICookieService cookieService,
+            IRefreshTokenHasher refreshTokenHasher)
         {
             _configuration = configuration;
             _httpContextAccessor = httpContextAccessor;
+            _cookieService = cookieService;
+            _refreshTokenHasher = refreshTokenHasher;
         }
 
         public Guid GetUserIdFromCookie()
@@ -30,7 +38,11 @@ namespace Arzenal.Store.Api.Service.Services.Auth
             if (string.IsNullOrEmpty(jwt)) return Guid.Empty;
 
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes(_configuration["Jwt:SecretKey"]);
+            var secretKey = _configuration["Jwt:SecretKey"];
+            if (string.IsNullOrWhiteSpace(secretKey))
+                throw new InvalidOperationException("La clé secrète JWT n'est pas configurée.");
+
+            var key = Encoding.UTF8.GetBytes(secretKey);
                 
             try
             {
@@ -42,7 +54,7 @@ namespace Arzenal.Store.Api.Service.Services.Auth
                     ValidIssuer = _configuration["Jwt:Issuer"],
                     ValidateAudience = true,
                     // Use the same audiences as configured for Jwt authentication
-                    ValidAudiences = new[] { "web", "ArzenalStoreManager", "ArzenalAuth" },
+                    ValidAudiences = ValidAudiences,
                     ClockSkew = TimeSpan.Zero
                 }, out SecurityToken validatedToken);
 
@@ -55,29 +67,19 @@ namespace Arzenal.Store.Api.Service.Services.Auth
             }
         }
 
-        public bool GetCurrentCookie(string token)
+        public bool GetCurrentCookie(string tokenHash)
         {
             var context = _httpContextAccessor.HttpContext;
             if (context == null) return false;
 
-            var cookieValue = context.Request.Cookies["refreshToken"];
-            if (string.IsNullOrEmpty(cookieValue)) return false;
-
-            try
-            {
-                var currentRefreshToken = JsonSerializer.Deserialize<RefreshTokenCookieData>(
-                    Convert.FromBase64String(cookieValue)
-                );
-
-                if (currentRefreshToken == null) return false;
-
-                return currentRefreshToken.Token == token;
-            }
-            catch
-            {
-                // Si le cookie est mal formé, on considère que ce n'est pas le bon
+            var currentRefreshToken = _cookieService.GetRefreshToken(context.Request);
+            if (currentRefreshToken == null || string.IsNullOrWhiteSpace(currentRefreshToken.Token))
                 return false;
-            }
+
+            var currentTokenHash = _refreshTokenHasher.Hash(currentRefreshToken.Token);
+            return CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(currentTokenHash),
+                Encoding.UTF8.GetBytes(tokenHash));
         }
     }
 }

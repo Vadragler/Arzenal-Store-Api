@@ -23,14 +23,24 @@ namespace Arzenal.Store.Api.Infrastructure.Data
                 entity.Property(e => e.Username).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.PasswordHash).IsRequired();
                 entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
+                entity.HasIndex(e => e.Email).IsUnique();
+                entity.HasIndex(e => e.Username).IsUnique();
                 //entity.Property(e => e.Group).IsRequired().HasMaxLength(20);
             });
 
-            modelBuilder.Entity<RefreshToken>()
-            .HasOne(rt => rt.User)
-            .WithMany(u => u.RefreshTokens)
-            .HasForeignKey(rt => rt.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<RefreshToken>(entity =>
+            {
+                entity.Property(rt => rt.TokenHash).IsRequired().HasMaxLength(64);
+                entity.Property(rt => rt.ReplacedByTokenHash).HasMaxLength(64);
+                entity.Property(rt => rt.UpdatedAt).IsConcurrencyToken();
+                entity.HasIndex(rt => rt.TokenHash).IsUnique();
+                entity.HasIndex(rt => new { rt.UserId, rt.DeviceName, rt.IsRevoked });
+                entity.HasIndex(rt => rt.FamilyId);
+                entity.HasOne(rt => rt.User)
+                    .WithMany(u => u.RefreshTokens)
+                    .HasForeignKey(rt => rt.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 }

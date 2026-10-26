@@ -1,5 +1,4 @@
 ﻿using Arzenal.Dto.DTOs.LanguageDto;
-using Arzenal.Dto.DTOs.LanguageDto;
 
 namespace Arzenal.Store.Api.Service.Interfaces
 {

@@ -7,7 +7,7 @@ namespace Arzenal.Store.Api.Service.Interfaces
     {
         Task<bool> RegisterAsync(RegisterRequestDto request);
 
-        Task<(string? accessToken, string? refreshToken)> AuthenticateAsync(HttpResponse Response, string username, string password, CreateRefreshTokenDto dto);
+        Task<(string? accessToken, string? refreshToken)> AuthenticateAsync(HttpResponse Response, string email, string password, CreateRefreshTokenDto dto);
 
         Task RotateRefreshTokenAsync(HttpContext context);
 

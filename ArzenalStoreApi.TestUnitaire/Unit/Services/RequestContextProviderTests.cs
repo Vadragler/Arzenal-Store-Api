@@ -6,7 +6,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
     public class RequestContextProviderTests
     {
         [Fact]
-        public void Get_ShouldReturnClientContext_WithAllValues()
+        public void GetClientContext_ShouldReturnClientContext_WithAllValues()
         {
             // Arrange
             var context = new DefaultHttpContext();
@@ -16,7 +16,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             var provider = new RequestContextProvider();
 
             // Act
-            var result = provider.Get(context);
+            var result = provider.GetClientContext(context);
 
             // Assert
             Assert.Equal("TestAgent", result.UserAgent);
@@ -25,14 +25,14 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
         }
 
         [Fact]
-        public void Get_ShouldReturnDefaults_WhenHeadersMissing()
+        public void GetClientContext_ShouldReturnDefaults_WhenHeadersMissing()
         {
             // Arrange
             var context = new DefaultHttpContext();
             var provider = new RequestContextProvider();
 
             // Act
-            var result = provider.Get(context);
+            var result = provider.GetClientContext(context);
 
             // Assert
             Assert.Equal("Unknown User-Agent", result.UserAgent);

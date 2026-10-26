@@ -17,7 +17,7 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.AuthDb
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.23")
+                .HasAnnotation("ProductVersion", "9.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
@@ -56,6 +56,9 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.AuthDb
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<DateTime>("AbsoluteExpiresAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -64,10 +67,13 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.AuthDb
 
                     b.Property<string>("DeviceName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<DateTime?>("ExpiresAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("char(36)");
 
                     b.Property<string>("Fingerprint")
                         .IsRequired()
@@ -79,16 +85,25 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.AuthDb
                     b.Property<DateTime>("LastUsed")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<string>("ReplacedByToken")
-                        .HasColumnType("longtext");
+                    b.Property<string>("ReplacedByTokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
 
-                    b.Property<string>("Token")
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("TokenHash")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
 
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("UserAgent")
                         .HasColumnType("longtext");
@@ -98,7 +113,12 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.AuthDb
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("FamilyId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "DeviceName", "IsRevoked");
 
                     b.ToTable("RefreshTokens", (string)null);
                 });
@@ -128,6 +148,12 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.AuthDb
                         .HasColumnType("varchar(50)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("Username")
+                        .IsUnique();
 
                     b.ToTable("User", (string)null);
                 });

@@ -7,6 +7,7 @@ namespace Arzenal.Store.Api.Service.Mapping.TagMapping
     [Mapper]
     public partial class TagMapper
     {
+        [MapperIgnoreSource(nameof(Tag.AppTags))]
         public partial ReadTagDto ToReadTagDto(Tag tag);
         public partial void UpdateTagFromDto(UpdateTagDto dto, Tag tag);
 

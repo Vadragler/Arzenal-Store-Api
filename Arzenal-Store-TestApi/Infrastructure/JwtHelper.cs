@@ -12,7 +12,9 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
         {
             var audiences = new[] { "web", "ArzenalStoreManager" };
                
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:SecretKey"]));
+            var secretKey = configuration["Jwt:SecretKey"]
+                ?? throw new InvalidOperationException("La clé JWT de test est absente.");
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var claims = new List<Claim>

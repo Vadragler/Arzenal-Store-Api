@@ -1,5 +1,5 @@
-﻿using Arzenal.Store.Api.Service.Interfaces;
-using Arzenal.Dto.DTOs.CategorieDto;
+﻿using Arzenal.Dto.DTOs.CategorieDto;
+using Arzenal.Store.Api.Service.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -66,6 +66,9 @@ namespace ArzenalStoreApi.Controllers.Apps
         public async Task<ActionResult<ReadCategorieDto>> PostCategorie(CreateCategorieDto dto)
         {
             var created = await _categoryService.CreateAsync(dto);
+            if (created is null)
+                return Problem("La catégorie n'a pas pu être créée.", statusCode: StatusCodes.Status500InternalServerError);
+
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
@@ -104,7 +107,7 @@ namespace ArzenalStoreApi.Controllers.Apps
         public async Task<IActionResult> DeleteCategorie(Guid id)
         {
             await _categoryService.DeleteAsync(id);
-            return NoContent(); 
+            return NoContent();
         }
     }
 }

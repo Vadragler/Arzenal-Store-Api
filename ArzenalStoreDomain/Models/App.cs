@@ -21,5 +21,7 @@
         public ICollection<AppTag>? AppTags { get; set; }
 
         public ICollection<AppOperatingSystem>? AppOperatingSystems { get; set; }
+
+        public ICollection<AppArtifact>? Artifacts { get; set; }
     }
 }

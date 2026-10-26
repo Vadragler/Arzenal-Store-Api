@@ -11,7 +11,7 @@ namespace Arzenal.Store.Api.Service.Mapping.AppMaping
         // App -> ReadAppDto
         public ReadAppDto ToReadAppDto(App app)
         {
-            if (app == null) return null;
+            ArgumentNullException.ThrowIfNull(app);
 
             var target = new ReadAppDto
             {
@@ -27,19 +27,19 @@ namespace Arzenal.Store.Api.Service.Mapping.AppMaping
                 AppSize = app.AppSize,
                 Category = app.Category?.Name,
                 Languages = app.AppLanguages?
-                  .Where(al => al?.Language != null)
-                  .Select(al => al.Language.Name)
-                  .ToList(),
+                  .Where(al => al.Language?.Name is not null)
+                  .Select(al => al.Language.Name!)
+                  .ToList() ?? [],
 
                 Tags = app.AppTags?
-                        .Where(at => at?.Tag != null)
-                        .Select(at => at.Tag.Name)
-                        .ToList(),
+                        .Where(at => at.Tag?.Name is not null)
+                        .Select(at => at.Tag.Name!)
+                        .ToList() ?? [],
 
                 OperatingSystems = app.AppOperatingSystems?
-                     .Where(os => os?.OperatingSystem != null)
-                     .Select(os => os.OperatingSystem.Name)
-                     .ToList()
+                     .Where(os => os.OperatingSystem?.Name is not null)
+                     .Select(os => os.OperatingSystem.Name!)
+                     .ToList() ?? []
 
             };
 
@@ -49,12 +49,17 @@ namespace Arzenal.Store.Api.Service.Mapping.AppMaping
         // CreateAppDto -> App
         public App ToApp(CreateAppDto dto)
         {
-            if (dto == null) return null;
+            ArgumentNullException.ThrowIfNull(dto);
+
+            var name = dto.Name;
+            var version = dto.Version;
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(version))
+                throw new ArgumentException("Le nom et la version de l'application sont requis.", nameof(dto));
 
             var target = new App
             {
-                Name = dto.Name,
-                Version = dto.Version,
+                Name = name,
+                Version = version,
                 Description = dto.Description,
                 IsVisible = dto.IsVisible,
                 CategoryId = dto.CategoryId,

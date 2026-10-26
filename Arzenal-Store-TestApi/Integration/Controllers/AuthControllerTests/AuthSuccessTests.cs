@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Xunit.Abstractions;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AuthControllerTests
@@ -82,10 +83,8 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AuthControll
 
             CreateRefreshTokenDto requet = new CreateRefreshTokenDto
             {
-                UserId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789"),
                 DeviceName = "IntegrationTestDevice",
-                Fingerprint = "IntegrationTestFingerprint",
-                CreatedByIp = "127.0.0.1"
+                Fingerprint = "IntegrationTestFingerprint"
             };
 
             // Act
@@ -93,6 +92,55 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AuthControll
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, refreshResponse.StatusCode);
+        }
+
+        [Fact]
+        public async Task GenerateRefreshToken_UsesAuthenticatedUser_IgnoresClientUserId()
+        {
+            var victimId = Guid.NewGuid();
+            await using (var scope = _factory.Services.CreateAsyncScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+                dbContext.Users.Add(new User
+                {
+                    Id = victimId,
+                    Username = $"victim-{victimId:N}",
+                    Email = $"victim-{victimId:N}@example.com",
+                    PasswordHash = "unused"
+                });
+                await dbContext.SaveChangesAsync();
+            }
+
+            var appLoginResponse = await _client.GetAsync("api/auth/create-app-login-token");
+            appLoginResponse.EnsureSuccessStatusCode();
+            using var tokenDocument = JsonDocument.Parse(await appLoginResponse.Content.ReadAsStringAsync());
+            var appLoginToken = tokenDocument.RootElement.GetProperty("token").GetString();
+            Assert.False(string.IsNullOrWhiteSpace(appLoginToken));
+
+            var client = _factory.CreateAuthenticatedClient(token: appLoginToken);
+            var deviceName = $"P0-{Guid.NewGuid():N}";
+            var response = await client.PostAsJsonAsync(
+                "api/auth/GenerateRefreshToken",
+                new
+                {
+                    UserId = victimId,
+                    DeviceName = deviceName,
+                    Fingerprint = "p0-regression-fingerprint",
+                    UserAgent = "forged-client-value",
+                    CreatedByIp = "203.0.113.1"
+                });
+
+            response.EnsureSuccessStatusCode();
+
+            await using var verificationScope = _factory.Services.CreateAsyncScope();
+            var verificationDb = verificationScope.ServiceProvider.GetRequiredService<AuthDbContext>();
+            var refreshToken = await verificationDb.RefreshTokens.SingleAsync(token => token.DeviceName == deviceName);
+
+            var authenticatedUserId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            Assert.Equal(authenticatedUserId, refreshToken.UserId);
+            Assert.NotEqual(victimId, refreshToken.UserId);
+            Assert.Equal("ArzenalStoreManager", refreshToken.UserAgent);
+            Assert.NotEqual("203.0.113.1", refreshToken.CreatedByIp);
         }
 
         [Fact]
@@ -138,14 +186,9 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AuthControll
 
             _output.WriteLine($"DTO => Device: '{request.DeviceName}' | Fingerprint: '{request.Fingerprint}'");
 
-            // ✅ Vérifie qu'il n'y a qu'un seul token
-            Assert.Single(tokens);
-
-            // ✅ Vérifie qu'il a été remplacé
-            Assert.NotEqual("expired-refresh-token", tokens[0].Token);
-
-            // ✅ Vérifie qu'il est valide maintenant
-            Assert.True(tokens[0].ExpiresAt > DateTime.UtcNow);
+            Assert.Equal(2, tokens.Count);
+            Assert.Contains(tokens, token => token.IsRevoked && token.ExpiresAt <= DateTime.UtcNow);
+            Assert.Contains(tokens, token => !token.IsRevoked && token.ExpiresAt > DateTime.UtcNow);
         }
 
         // ------------------- REFRESH -------------------

@@ -19,7 +19,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
                 .Options;
 
             return new AuthDbContext(options);
-        } 
+        }
 
         [Fact]
         public async Task GetAllDevice_ReturnsListOfDevices()
@@ -41,7 +41,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
                     CreatedByIp = "127.0.0.1",
                     LastUsed = DateTime.UtcNow,
                     Type = "PC",
-                    Token = "token1",
+                    TokenHash = "hash:token1",
                     Fingerprint = "fingerprint1"
                 },
                 new RefreshToken
@@ -52,7 +52,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
                     CreatedByIp = "127.0.0.2",
                     LastUsed = DateTime.UtcNow,
                     Type = "Mobile",
-                    Token = "token2",
+                    TokenHash = "hash:token2",
                     Fingerprint = "fingerprint2"
                 }
             );
@@ -84,7 +84,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             db.RefreshTokens.Add(new RefreshToken
             {
                 Id = deviceId,
-                Token = token.ToString(),
+                TokenHash = $"hash:{token}",
                 UserId = userId,
                 Fingerprint = "fingerprint",
                 DeviceName = "PC"
@@ -101,7 +101,8 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
 
             // Assert
             Assert.True(result);
-            Assert.Empty(db.RefreshTokens);
+            var storedToken = await db.RefreshTokens.SingleAsync();
+            Assert.True(storedToken.IsRevoked);
         }
 
 

@@ -1,8 +1,9 @@
-﻿using Arzenal.Store.Api.Domain.Models;
-using ArzenalStoreInfrastructure.Data;
+﻿using Arzenal.Dto.DTOs.AppDto;
+using Arzenal.Store.Api.Domain.Models;
 using Arzenal.Store.Api.Service.Mapping.AppMaping;
 using Arzenal.Store.Api.Service.Services.AppService;
-using Arzenal.Dto.DTOs.AppDto;
+using ArzenalStoreInfrastructure.Data;
+using Microsoft.AspNetCore.Http;
 using Moq;
 
 namespace Arzenal.Store.Api.TestIntegration.Infrastructure
@@ -35,7 +36,7 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
                     Version = dto.Version,
                     IsVisible = dto.IsVisible,
                     CategoryId = dto.CategoryId,
-                    AppSize = (long)dto.AppSize,
+                    AppSize = dto.AppSize ?? 0,
                     ReleaseDate = DateTime.UtcNow
                 });
 

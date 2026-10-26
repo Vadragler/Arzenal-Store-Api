@@ -1,5 +1,4 @@
 ﻿using Arzenal.Dto.DTOs.AccountDto;
-using Arzenal.Dto.DTOs.AccountDto;
 
 namespace Arzenal.Store.Api.Service.Interfaces
 {

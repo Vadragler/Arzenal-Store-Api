@@ -54,6 +54,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.DevicesControllerTests
             var okResult = Assert.IsType<OkObjectResult>(result);
             var json = System.Text.Json.JsonSerializer.Serialize(okResult.Value);
             var data = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, bool>>(json);
+            Assert.NotNull(data);
             Assert.True(data["success"]);
 
         }

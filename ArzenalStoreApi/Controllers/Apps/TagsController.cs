@@ -1,5 +1,5 @@
-﻿using Arzenal.Store.Api.Service.Interfaces;
-using Arzenal.Dto.DTOs.TagDto;
+﻿using Arzenal.Dto.DTOs.TagDto;
+using Arzenal.Store.Api.Service.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;

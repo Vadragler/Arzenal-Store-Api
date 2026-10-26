@@ -5,6 +5,6 @@ namespace Arzenal.Store.Api.Service.Interfaces
 {
     public interface IRequestContextProvider
     {
-        ClientContextDto Get(HttpContext http);
+        ClientContextDto GetClientContext(HttpContext http);
     }
 }

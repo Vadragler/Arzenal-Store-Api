@@ -43,6 +43,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.InviteControllerTests
             var okResult = Assert.IsType<OkObjectResult>(result);
             var json = System.Text.Json.JsonSerializer.Serialize(okResult.Value);
             var data = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+            Assert.NotNull(data);
             Assert.Equal(data["Link"], inviteLink);
         }
 

@@ -1,9 +1,11 @@
-﻿using Arzenal.Store.Api.Service.Interfaces;
-using ArzenalStoreInfrastructure.Data;
+﻿using Arzenal.Dto.DTOs.TagDto;
 using Arzenal.Store.Api.Service.Exceptions;
+using Arzenal.Store.Api.Service.Interfaces;
 using Arzenal.Store.Api.Service.Mapping.TagMapping;
-using Arzenal.Dto.DTOs.TagDto;
+using ArzenalStoreInfrastructure.Data;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace Arzenal.Store.Api.Service.Services.TagService
 {

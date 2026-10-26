@@ -3,12 +3,13 @@ using Arzenal.Dto.DTOs.FileDto;
 using Arzenal.Store.Api.Service.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ArzenalStoreApi.Controllers.Apps
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Policy="ArzenalStoreManager")]
+    [Authorize(Policy = "ArzenalStoreManager")]
     public class AppFilesController : ControllerBase
     {
         private readonly IAppFilesService _appFilesService;
@@ -47,6 +48,7 @@ namespace ArzenalStoreApi.Controllers.Apps
         /// Renvoie <c>404 NotFound</c> si aucune icône n'est trouvée.
         /// </returns>
         [HttpGet("icon/{appId}")]
+        [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -70,22 +72,25 @@ namespace ArzenalStoreApi.Controllers.Apps
 
 
         /// <summary>
-        /// Télécharge le fichier de l'application correspondante.
+        /// Télécharge un artefact précis d'une application.
         /// </summary>
         /// <param name="appId">Identifiant unique de l'application.</param>
+        /// <param name="version">Version de l'artefact demandée.</param>
+        /// <param name="platform">Plateforme cible de l'artefact demandé.</param>
         /// <returns>
         /// Le fichier binaire de l'application sous forme de flux,
         /// avec son nom réel dans l'en-tête <c>Content-Disposition</c>.
         /// </returns>
-        [HttpGet("download/{appId}")]
+        [HttpGet("download/{appId}/versions/{version}/platforms/{platform}")]
+        [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [Produces("application/octet-stream")]
-        public async Task<IActionResult> DownloadApp(Guid appId)
+        public async Task<IActionResult> DownloadApp(Guid appId, string version, string platform)
         {
-            var result = await _appFilesService.Download(appId);
+            var result = await _appFilesService.Download(appId, version, platform);
 
             return File(
                 result.Stream,
@@ -98,14 +103,11 @@ namespace ArzenalStoreApi.Controllers.Apps
         /// <summary>
         /// Téléverse un fichier pour une application donnée.
         /// </summary>
-        /// <param name="fileDto">
-        /// Objet contenant les informations du fichier à téléverser, y compris :
-        /// - <c>File</c> : le fichier envoyé dans un formulaire multipart (<c>multipart/form-data</c>),
-        /// - <c>AppId</c> : l'identifiant unique de l'application,
-        /// - <c>Version</c> : la version de l'application,
-        /// - <c>Platform</c> : la plateforme cible (Android, Windows, iOS, etc.),
-        /// - <c>Type</c> : le type de fichier (par exemple "app" ou "icon").
-        /// </param>
+        /// <param name="appId">Identifiant unique de l'application.</param>
+        /// <param name="version">Version de l'application.</param>
+        /// <param name="type">Type de fichier, par exemple <c>app</c> ou <c>icon</c>.</param>
+        /// <param name="fileName">Nom du fichier téléversé.</param>
+        /// <param name="platform">Plateforme cible, facultative pour une icône.</param>
         /// <returns>
         /// Une réponse <c>201 Created</c> contenant le chemin du fichier téléversé.
         /// Le corps de la réponse contient :
@@ -117,7 +119,8 @@ namespace ArzenalStoreApi.Controllers.Apps
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [RequestSizeLimit(524288000)]
+        [RequestSizeLimit(268435456)]
+        [EnableRateLimiting("upload")]
         public async Task<IActionResult> UploadFile(
             [FromRoute] Guid appId,
             [FromRoute] string version,

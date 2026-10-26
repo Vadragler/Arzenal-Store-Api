@@ -8,10 +8,10 @@ namespace Arzenal.Store.Api.Domain.Models
         public Guid AppId { get; set; }
 
         [JsonIgnore]
-        public App App { get; set; }
+        public App App { get; set; } = null!;
 
         public Guid LanguageId { get; set; }
-        public Language Language { get; set; }
+        public Language Language { get; set; } = null!;
     }
 
 }

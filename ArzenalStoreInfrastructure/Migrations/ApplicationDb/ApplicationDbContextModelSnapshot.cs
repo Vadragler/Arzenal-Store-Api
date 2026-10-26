@@ -17,7 +17,7 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.ApplicationDb
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.23")
+                .HasAnnotation("ProductVersion", "9.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
@@ -74,6 +74,62 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.ApplicationDb
                     b.HasIndex("CategoryId");
 
                     b.ToTable("Apps", (string)null);
+                });
+
+            modelBuilder.Entity("Arzenal.Store.Api.Domain.Models.AppArtifact", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("AppId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Locator")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("varchar(160)");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Platform")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("RelativePath")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Version")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppId", "Type", "Locator")
+                        .IsUnique();
+
+                    b.ToTable("AppArtifacts", (string)null);
                 });
 
             modelBuilder.Entity("Arzenal.Store.Api.Domain.Models.AppLanguage", b =>
@@ -197,6 +253,17 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.ApplicationDb
                     b.Navigation("Category");
                 });
 
+            modelBuilder.Entity("Arzenal.Store.Api.Domain.Models.AppArtifact", b =>
+                {
+                    b.HasOne("Arzenal.Store.Api.Domain.Models.App", "App")
+                        .WithMany("Artifacts")
+                        .HasForeignKey("AppId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("App");
+                });
+
             modelBuilder.Entity("Arzenal.Store.Api.Domain.Models.AppLanguage", b =>
                 {
                     b.HasOne("Arzenal.Store.Api.Domain.Models.App", "App")
@@ -261,6 +328,8 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.ApplicationDb
                     b.Navigation("AppOperatingSystems");
 
                     b.Navigation("AppTags");
+
+                    b.Navigation("Artifacts");
                 });
 
             modelBuilder.Entity("Arzenal.Store.Api.Domain.Models.Language", b =>

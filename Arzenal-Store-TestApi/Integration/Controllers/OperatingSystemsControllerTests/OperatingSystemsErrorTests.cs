@@ -1,8 +1,8 @@
-﻿using Arzenal.Dto.DTOs.OperatingSystemDto;
+using Arzenal.Dto.DTOs.OperatingSystemDto;
+using Arzenal.Store.Api.TestIntegration.Infrastructure;
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using Arzenal.Store.Api.TestIntegration.Infrastructure;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.OperatingSystemsControllerTests
 {
@@ -70,10 +70,22 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.OperatingSys
         {
             // Arrange
             var newOs = new CreateOperatingSystemDto { Name = name };
-            var jsonContent = new StringContent(JsonSerializer.Serialize(newOs), Encoding.UTF8, "application/json");
-            
-            // Act
-            var response = await _client.PostAsync("api/operatingsystems", jsonContent);
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
+
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(newOs);
+
+            // 2️⃣ Calculer signature
+            var url = "api/operatingsystems/";
+
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var response = await _client.SendAsync(request);
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -85,17 +97,41 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.OperatingSys
         {
             // Arrange
             var newOs = new CreateOperatingSystemDto { Name = "IOS" };
-            var jsonContent = new StringContent(JsonSerializer.Serialize(newOs), Encoding.UTF8, "application/json");
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
 
-            var postResponse = await _client.PostAsync("api/operatingsystems", jsonContent);
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(newOs);
+
+            // 2️⃣ Calculer signature
+            var url = "api/operatingsystems/";
+
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var postResponse = await _client.SendAsync(request);
             postResponse.EnsureSuccessStatusCode();
 
             var createdOs = JsonSerializer.Deserialize<ReadOperatingSystemDto>(await postResponse.Content.ReadAsStringAsync(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            Assert.NotNull(createdOs);
             var updateOs = new UpdateOperatingSystemDto { Name = "Windows" };
-            jsonContent = new StringContent(JsonSerializer.Serialize(updateOs), Encoding.UTF8, "application/json");
 
-            // Act
-            var putResponse = await _client.PutAsync($"api/operatingsystems/{createdOs!.Id}", jsonContent);
+            // 1️⃣ Serialize le DTO une seule fois
+            jsonBody = JsonSerializer.Serialize(updateOs);
+
+            // 2️⃣ Calculer signature
+            url = $"api/operatingsystems/{createdOs.Id}";
+
+            request = new HttpRequestMessage(HttpMethod.Put, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var putResponse = await _client.SendAsync(request);
 
             // Assert
             Assert.Equal(HttpStatusCode.Conflict, putResponse.StatusCode);
@@ -106,10 +142,22 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.OperatingSys
         {
             // Arrange
             var updateDto = new UpdateOperatingSystemDto { Name = "New Name" };
-            var jsonContent = new StringContent(JsonSerializer.Serialize(updateDto), Encoding.UTF8, "application/json");
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
 
-            // Act
-            var response = await _client.PutAsync($"api/operatingsystems/abc-h", jsonContent);
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(updateDto);
+
+            // 2️⃣ Calculer signature
+            var url = "api/operatingsystems/abc";
+
+            var request = new HttpRequestMessage(HttpMethod.Put, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var response = await _client.SendAsync(request);
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -120,10 +168,22 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.OperatingSys
         {
             // Arrange
             var updateDto = new UpdateOperatingSystemDto { Name = "New Name" };
-            var jsonContent = new StringContent(JsonSerializer.Serialize(updateDto), Encoding.UTF8, "application/json");
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
 
-            // Act
-            var response = await _client.PutAsync($"api/operatingsystems/{Guid.NewGuid()}", jsonContent);
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(updateDto);
+
+            // 2️⃣ Calculer signature
+            var url = $"api/operatingsystems/{Guid.NewGuid()}";
+
+            var request = new HttpRequestMessage(HttpMethod.Put, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var response = await _client.SendAsync(request);
 
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -135,18 +195,43 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.OperatingSys
         {
             // Arrange
             var newOs = new CreateOperatingSystemDto { Name = "Nom valide" };
-            var jsonContent = new StringContent(JsonSerializer.Serialize(newOs), Encoding.UTF8, "application/json");
-            var postResponse = await _client.PostAsync("api/operatingsystems", jsonContent);
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
+
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(newOs);
+
+            // 2️⃣ Calculer signature
+            var url = "api/operatingsystems/";
+
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var postResponse = await _client.SendAsync(request);
             postResponse.EnsureSuccessStatusCode();
 
             var createdOs = JsonSerializer.Deserialize<ReadOperatingSystemDto>(await postResponse.Content.ReadAsStringAsync(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            Assert.NotNull(createdOs);
 
             // Tenter de mettre à jour avec un nom invalide
             var updateDto = new UpdateOperatingSystemDto { Name = name };
-            jsonContent = new StringContent(JsonSerializer.Serialize(updateDto), Encoding.UTF8, "application/json");
 
-            // Act
-            var putResponse = await _client.PutAsync($"api/operatingsystems/{createdOs!.Id}", jsonContent);
+            // 1️⃣ Serialize le DTO une seule fois
+            jsonBody = JsonSerializer.Serialize(updateDto);
+
+            // 2️⃣ Calculer signature
+            url = $"api/operatingsystems/{createdOs.Id}";
+
+            request = new HttpRequestMessage(HttpMethod.Put, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var putResponse = await _client.SendAsync(request);
 
             // Nettoyer
             var deleteResponse = await _client.DeleteAsync($"api/operatingsystems/{createdOs.Id}");

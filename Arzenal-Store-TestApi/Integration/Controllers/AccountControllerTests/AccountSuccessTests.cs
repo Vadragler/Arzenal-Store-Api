@@ -1,8 +1,11 @@
-﻿using Arzenal.Dto.DTOs.AccountDto;
+using Arzenal.Dto.DTOs.AccountDto;
 using Arzenal.Dto.DTOs.AuthDto;
+using Arzenal.Store.Api.Service.Services.Auth.Passwords;
 using Arzenal.Store.Api.TestIntegration.Infrastructure;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AccountControllerTests
 {
@@ -29,13 +32,28 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AccountContr
         {
             await using var factory = new CustomWebApplicationFactory<Program>();
             var client = factory.CreateAuthenticatedClient("Chrome");
+
             var patchDto = new UpdateAccountDto
             {
                 Username = "updated",
-                Email = "updated@example.com"
+                Email = "updated@example.com",
             };
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
 
-            var response = await client.PatchAsJsonAsync("api/account/me", patchDto);
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(patchDto);
+
+            // 2️⃣ Calculer signature
+            var url = "api/account/me";
+
+            var request = new HttpRequestMessage(HttpMethod.Patch, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var response = await client.SendAsync(request);
 
             Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 
@@ -43,6 +61,7 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AccountContr
             var get = await client.GetAsync("api/account/me");
             var dto = await get.Content.ReadFromJsonAsync<ReadAccountDto>();
 
+            Assert.NotNull(dto);
             Assert.Equal("updated", dto.Username);
             Assert.Equal("updated@example.com", dto.Email);
         }
@@ -52,20 +71,38 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AccountContr
         {
             await using var factory = new CustomWebApplicationFactory<Program>();
             var client = factory.CreateAuthenticatedClient("Chrome");
-            var patchDto = new UpdateAccountDto
+
+            var passwordService = new PasswordService();
+            var dto = new UpdateAccountDto
             {
                 ActualPassword = "hashed-password",
-                NewPassword = "NewPass123!"
+                NewPassword = "NewPassword123!"
             };
 
-            var response = await client.PatchAsJsonAsync("api/account/me", patchDto);
+            // 1️⃣ Serialize le DTO une seule fois
+            var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
+            var deviceName = "IntegrationTestDevice";
+
+            // 1️⃣ Serialize le DTO une seule fois
+            var jsonBody = JsonSerializer.Serialize(dto);
+
+            // 2️⃣ Calculer signature
+            var url = "api/account/me";
+
+            var request = new HttpRequestMessage(HttpMethod.Patch, url)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Device-Name", deviceName);
+
+            var response = await client.SendAsync(request);
             Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 
             // Reconnexion avec nouveau mot de passe
             var loginResponse = await client.PostAsJsonAsync("api/auth/login", new LoginRequestDto
             {
                 Email = "existing@example.com",
-                Password = "NewPass123!",
+                Password = "NewPassword123!",
                 DeviceName = "IntegrationTestDevice",
                 Fingerprint = "IntegrationTestFingerprint"
             });

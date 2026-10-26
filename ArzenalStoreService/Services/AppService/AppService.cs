@@ -1,9 +1,10 @@
-﻿using Arzenal.Store.Api.Service.Interfaces;
+﻿using Arzenal.Dto.DTOs.AppDto;
+using Arzenal.Dto.DTOs.Pagination;
 using Arzenal.Store.Api.Domain.Models;
-using ArzenalStoreInfrastructure.Data;
 using Arzenal.Store.Api.Service.Exceptions;
+using Arzenal.Store.Api.Service.Interfaces;
 using Arzenal.Store.Api.Service.Mapping.AppMaping;
-using Arzenal.Dto.DTOs.AppDto;
+using ArzenalStoreInfrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 
@@ -22,6 +23,8 @@ namespace Arzenal.Store.Api.Service.Services.AppService
         public async Task<List<ReadAppDto>> GetAllAppsAsync()
         {
             var apps = await _context.Apps
+                .AsNoTracking()
+                .AsSplitQuery()
                 .Include(a => a.Category)
                 .Include(a => a.AppLanguages)
                     !.ThenInclude(al => al.Language)
@@ -34,8 +37,41 @@ namespace Arzenal.Store.Api.Service.Services.AppService
             return apps.Select(a => _mapper.ToReadAppDto(SafeApp(a))).ToList();
         }
 
+        public async Task<PagedResultDto<ReadAppDto>> GetAppsPageAsync(
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (page < 1)
+                throw new ValidationException("Le numéro de page doit être supérieur ou égal à 1.");
+            if (pageSize is < 1 or > 100)
+                throw new ValidationException("La taille de page doit être comprise entre 1 et 100.");
+
+            var query = _context.Apps.AsNoTracking();
+            var totalCount = await query.CountAsync(cancellationToken);
+            var apps = await query
+                .OrderBy(app => app.Name)
+                .ThenBy(app => app.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .AsSplitQuery()
+                .Include(app => app.Category)
+                .Include(app => app.AppLanguages)!.ThenInclude(appLanguage => appLanguage.Language)
+                .Include(app => app.AppTags)!.ThenInclude(appTag => appTag.Tag)
+                .Include(app => app.AppOperatingSystems)!.ThenInclude(appOperatingSystem => appOperatingSystem.OperatingSystem)
+                .ToListAsync(cancellationToken);
+
+            return new PagedResultDto<ReadAppDto>
+            {
+                Items = apps.Select(app => _mapper.ToReadAppDto(SafeApp(app))).ToList(),
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
+        }
+
         #region Private Methods GetAllAppsAsync
-        private App SafeApp(App app)
+        private static App SafeApp(App app)
         {
             app.AppLanguages ??= new List<AppLanguage>();
             app.AppTags ??= new List<AppTag>();
@@ -99,7 +135,7 @@ namespace Arzenal.Store.Api.Service.Services.AppService
                 throw new ValidationException("Catégorie invalide");
         }
 
-        private async Task ValidateIdsAsync(IEnumerable<Guid>? ids, IQueryable<Guid> source, string error)
+        private static async Task ValidateIdsAsync(IEnumerable<Guid>? ids, IQueryable<Guid> source, string error)
         {
             if (ids == null) return;
 
@@ -174,7 +210,7 @@ namespace Arzenal.Store.Api.Service.Services.AppService
             return _mapper.ToReadAppDto(app);
         }
         #region Private Methods UpdateAppAsync
-        private async Task<List<T>> ValidateAndReplaceCollection<T, TKey>(
+        private static async Task<List<T>> ValidateAndReplaceCollection<T, TKey>(
             IEnumerable<TKey> ids,
             IQueryable<TKey> validIdsQuery,
             Func<List<TKey>, string> errorMessage,
@@ -184,7 +220,7 @@ namespace Arzenal.Store.Api.Service.Services.AppService
             var validIds = await validIdsQuery.ToListAsync();
             var invalidIds = ids.Except(validIds).ToList();
 
-            if (invalidIds.Any())
+            if (invalidIds.Count > 0)
                 throw new ValidationException(errorMessage(invalidIds));
 
             return ids.Select(createEntity).ToList();

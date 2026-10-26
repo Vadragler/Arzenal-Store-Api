@@ -86,7 +86,7 @@ namespace ArzenalStoreApi.Controllers.Apps
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> PutLanguage(Guid id, UpdateLanguageDto languageDto)
         {
-            await _languageService.UpdateAsync(id,languageDto);
+            await _languageService.UpdateAsync(id, languageDto);
             return NoContent();
         }
 

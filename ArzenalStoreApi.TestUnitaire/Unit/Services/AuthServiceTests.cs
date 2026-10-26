@@ -6,6 +6,7 @@ using Arzenal.Store.Api.Service.Exceptions;
 using Arzenal.Store.Api.Service.Interfaces;
 using Arzenal.Store.Api.Service.Services.Auth;
 using Arzenal.Store.Api.Service.Services.Auth.Passwords;
+using Arzenal.Store.Api.Service.Models.Auth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -152,13 +153,12 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             jwtMock.Setup(j => j.GenerateJwtTokenAsync(user.Id, It.IsAny<List<string>>())).ReturnsAsync("accessToken");
 
             var tokenServiceMock = new Mock<IRefreshTokenService>();
-            tokenServiceMock.Setup(t => t.GenerateRefreshToken(It.IsAny<CreateRefreshTokenDto>()))
+            tokenServiceMock.Setup(t => t.GenerateRefreshToken(It.IsAny<RefreshTokenCreationRequest>()))
                 .ReturnsAsync(new RefreshTokenCookieData { Token = "refreshToken", UserId = user.Id });
 
-            var responseMock = new Mock<HttpResponse>();
-            var contextMock = new Mock<HttpContext>();
-            contextMock.Setup(c => c.Request.Headers["User-Agent"]).Returns("agent");
-            responseMock.Setup(r => r.HttpContext).Returns(contextMock.Object);
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["User-Agent"] = "agent";
+            var response = httpContext.Response;
 
             var authService = new AuthService(
                 db,
@@ -171,7 +171,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
 
             var dto = new CreateRefreshTokenDto { DeviceName = "PC", Fingerprint = "fp" };
 
-            var (access, refresh) = await authService.AuthenticateAsync(responseMock.Object, "a@b.com", "pass", dto);
+            var (access, refresh) = await authService.AuthenticateAsync(response, "a@b.com", "pass", dto);
 
             Assert.Equal("accessToken", access);
             Assert.Equal("refreshToken", refresh);
@@ -243,11 +243,11 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
 
         // ------------------ LogoutAsync ------------------
         [Fact]
-        public async Task LogoutAsync_WithToken_DeletesToken()
+        public async Task LogoutAsync_WithToken_RevokesTokenThroughTheTokenService()
         {
             using var db = GetDbContext();
             var userId = Guid.NewGuid();
-            var refreshToken = new RefreshToken { Token = "tok", UserId = userId, Fingerprint = "fp", DeviceName = "PC" };
+            var refreshToken = new RefreshToken { TokenHash = "hash:tok", UserId = userId, Fingerprint = "fp", DeviceName = "PC" };
             db.RefreshTokens.Add(refreshToken);
             await db.SaveChangesAsync();
 
@@ -272,7 +272,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             var contextMock = new DefaultHttpContext();
             await authService.LogoutAsync(contextMock);
 
-            Assert.Empty(db.RefreshTokens.Where(rt => rt.UserId == userId && rt.Token == "tok"));
+            tokenServiceMock.Verify(service => service.RevokeRefreshTokenAsync("tok", userId), Times.Once);
         }
 
 
@@ -281,7 +281,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
         {
             // Arrange
             using var db = GetDbContext();
-            var user = new User { Id = Guid.NewGuid(),Username="test", Email = "a@b.com", PasswordHash = "hashed" };
+            var user = new User { Id = Guid.NewGuid(), Username = "test", Email = "a@b.com", PasswordHash = "hashed" };
             await db.Users.AddAsync(user);
 
             var existingToken = new RefreshToken
@@ -289,7 +289,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
                 UserId = user.Id,
                 DeviceName = "TestDevice",
                 Fingerprint = "FP123",
-                Token = "old-token",
+                TokenHash = "hash:old-token",
                 ExpiresAt = DateTime.UtcNow.AddDays(-1), // token expiré
                 CreatedAt = DateTime.UtcNow.AddDays(-31),
                 IsRevoked = false
@@ -300,10 +300,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             var dto = new CreateRefreshTokenDto
             {
                 DeviceName = "TestDevice",
-                Fingerprint = "FP123",
-                UserId = user.Id,
-                UserAgent = "TestAgent",
-                CreatedByIp = "127.0.0.1"
+                Fingerprint = "FP123"
             };
 
             var mockResponse = new DefaultHttpContext().Response;
@@ -315,7 +312,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             jwtMock.Setup(j => j.GenerateJwtTokenAsync(user.Id, It.IsAny<List<string>>())).ReturnsAsync("accessToken");
 
             var tokenServiceMock = new Mock<IRefreshTokenService>();
-            tokenServiceMock.Setup(t => t.GenerateRefreshToken(It.IsAny<CreateRefreshTokenDto>()))
+            tokenServiceMock.Setup(t => t.GenerateRefreshToken(It.IsAny<RefreshTokenCreationRequest>()))
                 .ReturnsAsync(new RefreshTokenCookieData { Token = "refreshToken", UserId = user.Id });
             var authService = new AuthService(
                db,
@@ -330,10 +327,9 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             var (accessToken, refreshToken) = await authService.AuthenticateAsync(mockResponse, user.Email, "pass", dto);
 
             // Assert
-            var tokenInDb = await db.RefreshTokens.FirstOrDefaultAsync(rt => rt.UserId == user.Id && rt.DeviceName == "TestDevice");
-            Assert.NotNull(tokenInDb);
-            Assert.Equal(refreshToken, tokenInDb!.Token); // le token en DB a été mis à jour
-            Assert.NotEqual("old-token", tokenInDb.Token); // il n'est plus l'ancien
+            Assert.Equal("refreshToken", refreshToken);
+            tokenServiceMock.Verify(service => service.GenerateRefreshToken(It.Is<RefreshTokenCreationRequest>(request =>
+                request.UserId == user.Id && request.DeviceName == "TestDevice")), Times.Once);
         }
     }
 }

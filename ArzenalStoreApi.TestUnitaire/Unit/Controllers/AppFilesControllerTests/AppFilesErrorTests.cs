@@ -45,11 +45,11 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AppFilesControllerTest
             var appId = Guid.NewGuid();
 
             _serviceMock
-                .Setup(s => s.Download(appId))
+                .Setup(s => s.Download(appId, "1.0.0", "windows"))
                 .ThrowsAsync(new NotFoundException("Aucune application trouvée."));
 
             var result = await Assert.ThrowsAsync<NotFoundException>(
-                () => _controller.DownloadApp(appId)
+                () => _controller.DownloadApp(appId, "1.0.0", "windows")
             );
 
             Assert.Equal("Aucune application trouvée.", result.Message);
@@ -94,7 +94,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Controllers.AppFilesControllerTest
 
             // Act & Assert
             var ex = await Assert.ThrowsAsync<ValidationException>(
-                () => controller.UploadFile(uploadFileDto.AppId, uploadFileDto.Type, uploadFileDto.Version, uploadFileDto.Platform)
+                () => controller.UploadFile(uploadFileDto.AppId, uploadFileDto.Version, uploadFileDto.Type, "app.exe", uploadFileDto.Platform)
             );
 
             Assert.Equal("Flux invalide.", ex.Message);

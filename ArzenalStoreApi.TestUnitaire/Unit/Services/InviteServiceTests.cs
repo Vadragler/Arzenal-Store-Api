@@ -32,7 +32,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             Assert.NotNull(token);
             Assert.Equal(email, token.Email);
             Assert.False(token.Used);
-            Assert.InRange(token.ExpiresAt.Value, DateTime.UtcNow.AddDays(6), DateTime.UtcNow.AddDays(8));
+            Assert.InRange(token.ExpiresAt!.Value, DateTime.UtcNow.AddDays(6), DateTime.UtcNow.AddDays(8));
             Assert.Contains(token.Token, link);
         }
 
@@ -104,7 +104,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
                 CreatedAt = DateTime.UtcNow,
                 Used = false
             };
-            db.InviteTokens.Add(invite);     
+            db.InviteTokens.Add(invite);
             await db.SaveChangesAsync();
 
             // Act
@@ -113,6 +113,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Services
             var updated = await db.InviteTokens.FindAsync(invite.Id);
 
             // Assert
+            Assert.NotNull(updated);
             Assert.True(updated.Used);
         }
 

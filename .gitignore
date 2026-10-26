@@ -26,6 +26,8 @@ appsettings.json
 appsettings.Development.json
 !appsettings.example.json
 .env
+deploy/.env
+deploy/secrets/
 secrets.json
 
 # === Tests / Coverage ===
@@ -47,4 +49,6 @@ docker-compose.override.yml
 /.dockerignore
 /.github/upgrades/scenarios/new-dotnet-version_4a60c6
 /Docker
+# État local historique : certificats, clés et données Nginx Proxy Manager.
+/Docker - 2/
 /tmp_backup_CustomWebApplicationFactory_original.txt

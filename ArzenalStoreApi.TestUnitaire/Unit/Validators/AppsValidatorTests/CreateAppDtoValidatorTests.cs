@@ -12,10 +12,10 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Validators.AppsValidatorTests
         [InlineData(null, null)]
         [InlineData("", "")]
         [InlineData(" ", " ")]
-        public void Should_Have_Error_When_Name_Or_Version_Or_FilePath_Are_Invalid(string name, string version)
+        public void Should_Have_Error_When_Name_Or_Version_Or_FilePath_Are_Invalid(string? name, string? version)
         {
             // Arrange
-            var model = new CreateAppDto { Name = name, Version = version};
+            var model = new CreateAppDto { Name = name!, Version = version! };
 
             // Act
             var result = _validator.TestValidate(model);
@@ -37,7 +37,7 @@ namespace Arzenal.Store.Api.TestUnitaire.Unit.Validators.AppsValidatorTests
             // Assert
             result.ShouldNotHaveValidationErrorFor(x => x.Name);
             result.ShouldNotHaveValidationErrorFor(x => x.Version);
-            
+
         }
     }
 }
