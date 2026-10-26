@@ -14,9 +14,16 @@ jobs:
     timeout-minutes: 20
     env:
       SharedDtosRoot: ${{ github.workspace }}/shared-dtos
+      SHARED_DTOS_READ_TOKEN: ${{ secrets.SHARED_DTOS_READ_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Require shared DTO read token
+        if: ${{ env.SHARED_DTOS_READ_TOKEN == '' }}
+        run: |
+          echo "::error::Le secret SHARED_DTOS_READ_TOKEN est requis pour lire le dépôt privé Arzenal-Store-Shared-Dtos."
+          exit 1
 
       - name: Checkout shared DTO contracts
         uses: actions/checkout@v4
@@ -24,6 +31,7 @@ jobs:
           repository: Vadragler/Arzenal-Store-Shared-Dtos
           ref: main
           path: shared-dtos
+          token: ${{ secrets.SHARED_DTOS_READ_TOKEN }}
 
       - uses: actions/setup-dotnet@v4
         with:

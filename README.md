@@ -75,3 +75,4 @@ Les tests d'intégration ne dépendent pas d'une base ou d'un port local : Testc
 - La composition Docker cloisonnée est disponible dans [deploy/README.md](deploy/README.md). Elle sépare le réseau proxy/API du réseau interne MySQL/ClamAV et ne contient aucun secret.
 - Utilisez `/health/live` pour savoir si le processus est vivant et `/health/ready` pour savoir si les deux bases sont joignables.
 - Consultez la CI GitHub Actions avant toute mise en production : build, tests unitaires, Testcontainers et audit NuGet y sont exécutés.
+- La CI lit le dépôt privé `Arzenal-Store-Shared-Dtos`. Créer dans ce dépôt API le secret GitHub Actions `SHARED_DTOS_READ_TOKEN` : un fine-grained personal access token limité au dépôt DTO, avec la permission **Contents: Read-only** et une durée de vie courte. Ne jamais placer ce token dans un fichier versionné.
