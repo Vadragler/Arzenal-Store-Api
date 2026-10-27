@@ -29,6 +29,19 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
         private const string JwtIssuer = "arzenal-integration";
         private const string AppLoginJwtSecret = "integration-app-jwt-secret-must-be-at-least-thirty-two-characters";
         private const string AppLoginJwtIssuer = "arzenal-integration-app";
+        private static readonly IReadOnlyDictionary<string, string?> TestConfiguration =
+            new Dictionary<string, string?>
+            {
+                ["Jwt:SecretKey"] = JwtSecret,
+                ["Jwt:Issuer"] = JwtIssuer,
+                ["Jwt-App-Login:SecretKey"] = AppLoginJwtSecret,
+                ["Jwt-App-Login:Issuer"] = AppLoginJwtIssuer,
+                ["RefreshToken:HashKey"] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                ["ConnectionStrings:StoreConnection"] = "Server=localhost;Database=placeholder;User Id=placeholder;Password=placeholder;",
+                ["ConnectionStrings:AuthConnection"] = "Server=localhost;Database=placeholder;User Id=placeholder;Password=placeholder;",
+                ["AppLogin:AllowedAppIds:0"] = "ArzenalStoreManager",
+                ["AppLogin:AllowedAppIds:1"] = "integration-test-app"
+            };
 
         private readonly MySqlContainer _databaseContainer;
         private readonly string _dbName;
@@ -42,6 +55,8 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
 
         public CustomWebApplicationFactory()
         {
+            ConfigureTestProcessEnvironment();
+
             // MySQL limite les noms de verrous à 64 caractères. EF Core dérive
             // le nom du verrou à partir du nom de la base, donc ce suffixe doit rester court.
             var suffix = Guid.NewGuid().ToString("N")[..16];
@@ -64,18 +79,7 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
         {
             builder.ConfigureAppConfiguration((_, configuration) =>
             {
-                configuration.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Jwt:SecretKey"] = JwtSecret,
-                    ["Jwt:Issuer"] = JwtIssuer,
-                    ["Jwt-App-Login:SecretKey"] = AppLoginJwtSecret,
-                    ["Jwt-App-Login:Issuer"] = AppLoginJwtIssuer,
-                    ["RefreshToken:HashKey"] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-                    ["ConnectionStrings:StoreConnection"] = "Server=localhost;Database=placeholder;User Id=placeholder;Password=placeholder;",
-                    ["ConnectionStrings:AuthConnection"] = "Server=localhost;Database=placeholder;User Id=placeholder;Password=placeholder;",
-                    ["AppLogin:AllowedAppIds:0"] = "ArzenalStoreManager",
-                    ["AppLogin:AllowedAppIds:1"] = "integration-test-app"
-                });
+                configuration.AddInMemoryCollection(TestConfiguration);
             });
 
             builder.ConfigureServices(services =>
@@ -134,6 +138,16 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
                 options.TokenValidationParameters.ValidIssuer = AppLoginJwtIssuer;
                 options.TokenValidationParameters.ValidAudience = "app-login";
             });
+        }
+
+        private static void ConfigureTestProcessEnvironment()
+        {
+            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
+
+            foreach (var (key, value) in TestConfiguration)
+            {
+                Environment.SetEnvironmentVariable(key.Replace(":", "__", StringComparison.Ordinal), value);
+            }
         }
 
         protected override void Dispose(bool disposing)
