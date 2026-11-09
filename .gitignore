@@ -52,3 +52,8 @@ docker-compose.override.yml
 # État local historique : certificats, clés et données Nginx Proxy Manager.
 /Docker - 2/
 /tmp_backup_CustomWebApplicationFactory_original.txt
+
+# Sources de construction de l'image de production.
+!deploy/Dockerfile
+!deploy/clamav.Dockerfile
+!/.dockerignore

@@ -7,14 +7,14 @@ using System.Text.Json;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.TagsControllerTests
 {
-    public class TagsControllerErrorTests : IClassFixture<CustomWebApplicationFactory<Program>>
+    public class TagsControllerErrorTests : IsolatedApiTest
     {
         private readonly CustomWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
 
-        public TagsControllerErrorTests(CustomWebApplicationFactory<Program> factory)
+        public TagsControllerErrorTests()
         {
-            _factory = factory;
+            _factory = Factory;
             _client = _factory.CreateAuthenticatedClient();
         }
 

@@ -1,0 +1,25 @@
+**/bin
+**/obj
+**/.git
+**/.vs
+**/TestResults
+**/TestStorage*
+**/appsettings*.json
+**/.env
+**/secrets
+**/*.pfx
+**/*.p12
+**/*.key
+**/*.pem
+**/*.sql
+**/*.trx
+**/*.log
+Docker
+Docker - 2
+backups
+shared-dtos
+Arzenal-Store-TestApi
+ArzenalStoreApi.TestUnitaire
+docs
+scripts
+.github

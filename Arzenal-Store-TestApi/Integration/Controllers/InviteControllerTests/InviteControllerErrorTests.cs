@@ -6,15 +6,15 @@ using System.Net;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.InviteControllerTests
 {
-    public class InviteControllerErrorTests : IClassFixture<CustomWebApplicationFactory<Program>>
+    public class InviteControllerErrorTests : IsolatedApiTest
     {
         private readonly HttpClient _client;
         private readonly CustomWebApplicationFactory<Program> _factory;
 
-        public InviteControllerErrorTests(CustomWebApplicationFactory<Program> factory)
+        public InviteControllerErrorTests()
         {
-            _factory = factory;
-            _client = factory.CreateClient();
+            _factory = Factory;
+            _client = Factory.CreateClient();
         }
 
         [Fact]

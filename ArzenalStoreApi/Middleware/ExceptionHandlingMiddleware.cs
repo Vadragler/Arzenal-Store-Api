@@ -22,6 +22,15 @@ namespace ArzenalStoreApi.Middleware
             {
                 await _next(context);
             }
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+            {
+                if (!context.Response.HasStarted) context.Response.StatusCode = 499;
+            }
+            catch (ServiceUnavailableException ex)
+            {
+                _logger.LogWarning(ex, "Dependency unavailable. TraceId: {TraceId}", context.TraceIdentifier);
+                await WriteProblemAsync(context, StatusCodes.Status503ServiceUnavailable, "Le service est temporairement indisponible.");
+            }
             catch (NotFoundException ex)
             {
                 _logger.LogWarning(ex, "Resource not found. TraceId: {TraceId}", context.TraceIdentifier);
@@ -82,7 +91,7 @@ namespace ArzenalStoreApi.Middleware
             };
             problem.Extensions["traceId"] = context.TraceIdentifier;
             context.Response.ContentType = "application/problem+json";
-            await context.Response.WriteAsJsonAsync(problem);
+            await context.Response.WriteAsJsonAsync(problem, options: null, contentType: "application/problem+json", cancellationToken: context.RequestAborted);
         }
     }
 }

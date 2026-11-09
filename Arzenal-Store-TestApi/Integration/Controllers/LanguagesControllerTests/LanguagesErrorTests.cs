@@ -7,14 +7,14 @@ using System.Text.Json;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.LanguagesControllerTests
 {
-    public class LanguagesControllerErrorTests : IClassFixture<CustomWebApplicationFactory<Program>>
+    public class LanguagesControllerErrorTests : IsolatedApiTest
     {
         private readonly CustomWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
 
-        public LanguagesControllerErrorTests(CustomWebApplicationFactory<Program> factory)
+        public LanguagesControllerErrorTests()
         {
-            _factory = factory;
+            _factory = Factory;
             _client = _factory.CreateAuthenticatedClient();
         }
 

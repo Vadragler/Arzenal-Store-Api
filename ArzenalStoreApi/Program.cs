@@ -24,11 +24,12 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(allowedOrigins ?? Array.Empty<string>())
               .AllowAnyHeader()
               .AllowAnyMethod()
+              .WithExposedHeaders("ETag", "Accept-Ranges", "Content-Range", "Content-Length", "Content-Disposition")
               .AllowCredentials();
     });
 });
 
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options => options.OperationFilter<ArzenalStoreApi.Documentation.StoreUploadOperationFilter>());
 
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
@@ -50,6 +51,10 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("refresh", httpContext => CreateSlidingWindowPolicy(httpContext, 30, TimeSpan.FromMinutes(15)));
     options.AddPolicy("invite", httpContext => CreateSlidingWindowPolicy(httpContext, 12, TimeSpan.FromMinutes(15)));
     options.AddPolicy("app-login", httpContext => CreateSlidingWindowPolicy(httpContext, 20, TimeSpan.FromMinutes(15)));
+    options.AddPolicy("store-read", httpContext => CreateSlidingWindowPolicy(httpContext, 300, TimeSpan.FromMinutes(1)));
+    options.AddPolicy("store-download", httpContext =>
+        RateLimitPartition.GetConcurrencyLimiter(httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new ConcurrencyLimiterOptions { PermitLimit = 4, QueueLimit = 0 }));
     options.AddPolicy("upload", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.User.Identity?.Name
@@ -118,6 +123,7 @@ builder.Services.Configure<FormOptions>(options =>
 
 
 builder.Services.Configure<StorageSettings>(builder.Configuration.GetSection("Storage"));
+builder.Services.Configure<StoreDistributionSettings>(builder.Configuration.GetSection("StoreDistribution"));
 builder.Services.Configure<MalwareScanSettings>(builder.Configuration.GetSection("MalwareScan"));
 
 if (builder.Environment.IsProduction() &&

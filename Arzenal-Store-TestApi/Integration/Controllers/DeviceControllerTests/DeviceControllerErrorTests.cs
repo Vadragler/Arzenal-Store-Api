@@ -4,13 +4,13 @@ using System.Net;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.DeviceControllerTests
 {
-    public class DeviceControllerErrorTests : IClassFixture<CustomWebApplicationFactory<Program>>
+    public class DeviceControllerErrorTests : IsolatedApiTest
     {
         private readonly CustomWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
-        public DeviceControllerErrorTests(CustomWebApplicationFactory<Program> factory)
+        public DeviceControllerErrorTests()
         {
-            _factory = factory;
+            _factory = Factory;
             _client = _factory.CreateAuthenticatedClient("Chrome");
         }
 

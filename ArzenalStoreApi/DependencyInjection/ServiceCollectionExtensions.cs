@@ -17,6 +17,7 @@ using Arzenal.Store.Api.Service.Services.CategoryService;
 using Arzenal.Store.Api.Service.Services.LanguageService;
 using Arzenal.Store.Api.Service.Services.OperatingSystemService;
 using Arzenal.Store.Api.Service.Services.TagService;
+using Arzenal.Store.Api.Service.Services.Store;
 
 namespace ArzenalStoreApi.DependencyInjection;
 
@@ -31,6 +32,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITagService, TagService>();
         services.AddScoped<IAppFilesService, AppFilesService>();
         services.AddSingleton<IFileScanner, ClamAvFileScanner>();
+        services.AddScoped<StoreService>();
+        services.AddSingleton<PublisherSignatureVerifier>();
 
         return services;
     }

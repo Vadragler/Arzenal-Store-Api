@@ -21,6 +21,8 @@ services:
       ReverseProxy__KnownProxies__0: ${REVERSE_PROXY_IP:?REVERSE_PROXY_IP is required}
       Storage__AppFilesPath: /var/lib/arzenal/apps
       Storage__RequireMalwareScan: "true"
+      StoreDistribution__PublisherDisplayName: ${STORE_PUBLISHER_NAME:-Arzenal}
+      StoreDistribution__PublisherPublicKeys__main: ${STORE_PUBLISHER_PUBLIC_KEY:-}
       MalwareScan__Enabled: "true"
       MalwareScan__Host: clamav
       MalwareScan__Port: "3310"
@@ -29,7 +31,7 @@ services:
       mysql:
         condition: service_healthy
       clamav:
-        condition: service_started
+        condition: service_healthy
     expose:
       - "8080"
     volumes:
@@ -49,7 +51,7 @@ services:
       malware_scan: {}
 
   mysql:
-    image: mysql:8.0.36
+    image: ${MYSQL_IMAGE:-mysql:8.4}
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: arzenal_store_db
@@ -70,29 +72,53 @@ services:
       database: {}
 
   clamav:
-    image: clamav/clamav:1.4.2
+    image: ${CLAMAV_IMAGE:-arzenal-clamav:debian12}
+    build:
+      context: ..
+      dockerfile: deploy/clamav.Dockerfile
     restart: unless-stopped
+    volumes:
+      - clamav_data:/var/lib/clamav
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "clamdscan", "--config-file=/etc/clamav/clamd.conf", "--ping=1"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 120s
     expose:
       - "3310"
     networks:
       malware_scan: {}
+      scanner_updates: {}
 
 networks:
   # Seul le reverse proxy et l'API doivent rejoindre ce réseau.
   edge:
-    name: arzenal_edge
+    name: ${ARZENAL_EDGE_NETWORK:-arzenal_edge}
     driver: bridge
   # Seuls l'API et MySQL peuvent se joindre sur ce réseau interne.
   database:
-    name: arzenal_database
+    name: ${ARZENAL_DATABASE_NETWORK:-arzenal_database}
     driver: bridge
     internal: true
   # Seuls l'API et ClamAV peuvent se joindre sur ce réseau interne.
   malware_scan:
-    name: arzenal_malware_scan
+    name: ${ARZENAL_SCAN_NETWORK:-arzenal_malware_scan}
     driver: bridge
     internal: true
+  # Sortie Internet dédiée à FreshClam ; aucun port publié et aucun accès au réseau MySQL.
+  scanner_updates:
+    name: ${ARZENAL_SCAN_UPDATES_NETWORK:-arzenal_scan_updates}
+    driver: bridge
 
 volumes:
   mysql_data:
   app_artifacts:
+  clamav_data:

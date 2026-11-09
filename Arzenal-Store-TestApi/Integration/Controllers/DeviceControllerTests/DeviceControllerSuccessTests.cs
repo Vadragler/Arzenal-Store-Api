@@ -6,7 +6,7 @@ using System.Net.Http.Json;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.DeviceControllerTests
 {
-    public class DeviceControllerSuccessTests : IClassFixture<CustomWebApplicationFactory<Program>>
+    public class DeviceControllerSuccessTests
     {
         [Fact]
         public async Task GetAllDevice_ReturnsOk_WithDevices()

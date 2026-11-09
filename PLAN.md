@@ -1,7 +1,26 @@
 # Audit technique — Arzenal-Store-Api
 
-Date de l'audit : 2 septembre 2026 (mis à jour le 26 octobre 2026)
+Date de l'audit : 2 septembre 2026 (mis à jour le 9 novembre 2026)
 Périmètre : état courant du dépôt, y compris les modifications locales non validées, et le projet DTO partagé référencé par la solution.
+
+## Mise à jour Store V1 — 9 novembre 2026
+
+Le backend de la première version du magasin est implémenté : catalogue public paginé,
+releases et artefacts référencés en base, publication/retrait explicites, signature de
+distribution, téléchargements reprenables et journal de publication. Les migrations,
+la construction des images AMD64/ARM64 et le workflow manuel de publication sont préparés.
+Les tests d'intégration partagent un serveur MySQL 8.4 éphémère avec des bases Store/Auth
+isolées par scénario et une vérification de connexion depuis l'hôte avant les premiers tests.
+
+Le contrat actuel et les limites de validation des paquets sont décrits dans
+[docs/STORE_API_V1.md](docs/STORE_API_V1.md). Les constats et notes ci-dessous restent
+l'historique de l'audit d'octobre ; les mentions de pagination ou d'artefacts à créer ne
+décrivent plus les fonctionnalités manquantes de cette V1.
+
+Avant la production, il reste à vérifier la CI du code publié, basculer la configuration
+réelle du Pi, exercer une sauvegarde/restauration MySQL et fichiers vers un autre PC,
+configurer la surveillance et tester de vrais paquets signés jusqu'à leur installation
+par le client. Le futur service Auth OIDC/passkeys destiné au Vault reste un chantier distinct.
 
 ## Mise à jour de sécurisation — 26 octobre 2026
 

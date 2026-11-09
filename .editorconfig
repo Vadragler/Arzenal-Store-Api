@@ -3,6 +3,9 @@
 # RMG012: Source member was not found for target member
 dotnet_diagnostic.RMG012.severity = none
 
+[*.sh]
+end_of_line = lf
+
 [**/Migrations/**/*.cs]
 # Les migrations EF sont générées et l'initialiseur de tableau fait partie de leur snapshot immuable.
 dotnet_diagnostic.CA1861.severity = none

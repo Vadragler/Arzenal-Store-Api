@@ -12,14 +12,14 @@ using Xunit.Abstractions;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AuthControllerTests
 {
-    public class AuthSuccessTests : IClassFixture<CustomWebApplicationFactory<Program>>
+    public class AuthSuccessTests : IsolatedApiTest
     {
         private readonly CustomWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
         private readonly ITestOutputHelper _output;
-        public AuthSuccessTests(CustomWebApplicationFactory<Program> factory, ITestOutputHelper output)
+        public AuthSuccessTests(ITestOutputHelper output)
         {
-            _factory = factory;
+            _factory = Factory;
             _client = _factory.CreateAuthenticatedClient();
             _output = output;
 
@@ -203,7 +203,7 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AuthControll
             // Assert
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
-       
+
         // ------------------- REVOKE -------------------
         [Fact]
         public async Task Revoke_ReturnsOk_WhenAuthorized()
@@ -216,7 +216,7 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AuthControll
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        } 
+        }
 
         // ------------------- LOGOUT -------------------
         [Fact]

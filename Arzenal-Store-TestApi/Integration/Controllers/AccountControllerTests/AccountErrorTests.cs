@@ -6,14 +6,14 @@ using System.Text.Json;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AccountControllerTests
 {
-    public class AccountErrorTests : IClassFixture<CustomWebApplicationFactory<Program>>
+    public class AccountErrorTests : IsolatedApiTest
     {
         private readonly CustomWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
         private readonly HttpClient _clientfake;
-        public AccountErrorTests(CustomWebApplicationFactory<Program> factory)
+        public AccountErrorTests()
         {
-            _factory = factory;
+            _factory = Factory;
             _client = _factory.CreateAuthenticatedClient("Chrome");
             _clientfake = _factory.CreateFakeUserClient();
         }

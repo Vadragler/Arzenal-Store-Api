@@ -11,14 +11,14 @@ using System.Text.Json;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.LanguagesControllerTests
 {
-    public class LanguagesControllerSuccessTests : IClassFixture<CustomWebApplicationFactory<Program>>
+    public class LanguagesControllerSuccessTests : IsolatedApiTest
     {
         private readonly CustomWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
 
-        public LanguagesControllerSuccessTests(CustomWebApplicationFactory<Program> factory)
+        public LanguagesControllerSuccessTests()
         {
-            _factory = factory;
+            _factory = Factory;
             _client = _factory.CreateAuthenticatedClient();
         }
 
@@ -210,7 +210,7 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.LanguagesCon
 
             var languageResponse = JsonSerializer.Deserialize<ReadLanguageDto>(await postResponse.Content.ReadAsStringAsync(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             var languageId = languageResponse!.Id;
-           
+
             var app = new CreateAppDto
             {
                 Name = "New App 5",

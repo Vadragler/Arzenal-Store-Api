@@ -8,13 +8,13 @@ using System.Text.Json;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AppsControllerTests
 {
-    public class AppSuccessTests : IClassFixture<CustomWebApplicationFactory<Program>>
+    public class AppSuccessTests : IsolatedApiTest
     {
         private readonly CustomWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
-        public AppSuccessTests(CustomWebApplicationFactory<Program> factory)
+        public AppSuccessTests()
         {
-            _factory = factory;
+            _factory = Factory;
             _client = _factory.CreateAuthenticatedClient();
         }
 
@@ -118,7 +118,7 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AppsControll
             var list = JsonSerializer.Deserialize<List<ReadAppDto>>(await all.Content.ReadAsStringAsync(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
             var id = list.First().Id;
 
-            var update = new UpdateAppDto { Name = "Updated", Description = "Changed", IsVisible = false};
+            var update = new UpdateAppDto { Name = "Updated", Description = "Changed", IsVisible = false };
 
             var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
             var deviceName = "IntegrationTestDevice";

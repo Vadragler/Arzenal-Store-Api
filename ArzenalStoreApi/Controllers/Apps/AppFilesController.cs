@@ -48,7 +48,6 @@ namespace ArzenalStoreApi.Controllers.Apps
         /// Renvoie <c>404 NotFound</c> si aucune icône n'est trouvée.
         /// </returns>
         [HttpGet("icon/{appId}")]
-        [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -82,7 +81,6 @@ namespace ArzenalStoreApi.Controllers.Apps
         /// avec son nom réel dans l'en-tête <c>Content-Disposition</c>.
         /// </returns>
         [HttpGet("download/{appId}/versions/{version}/platforms/{platform}")]
-        [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

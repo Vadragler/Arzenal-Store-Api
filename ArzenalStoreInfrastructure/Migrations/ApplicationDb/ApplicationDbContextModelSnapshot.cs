@@ -64,6 +64,10 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.ApplicationDb
                     b.Property<string>("Requirements")
                         .HasColumnType("text");
 
+                    b.Property<string>("Slug")
+                        .HasMaxLength(160)
+                        .HasColumnType("varchar(160)");
+
                     b.Property<string>("Version")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -72,6 +76,9 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.ApplicationDb
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
 
                     b.ToTable("Apps", (string)null);
                 });
@@ -82,8 +89,15 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.ApplicationDb
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<long?>("AndroidVersionCode")
+                        .HasColumnType("bigint");
+
                     b.Property<Guid>("AppId")
                         .HasColumnType("char(36)");
+
+                    b.Property<string>("Architecture")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
 
                     b.Property<string>("ContentType")
                         .IsRequired()
@@ -98,19 +112,50 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.ApplicationDb
                         .HasMaxLength(160)
                         .HasColumnType("varchar(160)");
 
+                    b.Property<string>("MinimumOsVersion")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<string>("OriginalFileName")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
 
+                    b.Property<string>("PackageId")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("PackageType")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("PackageVersion")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<string>("Platform")
                         .HasMaxLength(16)
                         .HasColumnType("varchar(16)");
+
+                    b.Property<string>("PublisherKeyId")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("PublisherSignature")
+                        .HasMaxLength(2048)
+                        .HasColumnType("varchar(2048)");
 
                     b.Property<string>("RelativePath")
                         .IsRequired()
                         .HasMaxLength(512)
                         .HasColumnType("varchar(512)");
+
+                    b.Property<Guid?>("ReleaseId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Sha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -126,7 +171,12 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.ApplicationDb
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ReleaseId", "AppId");
+
                     b.HasIndex("AppId", "Type", "Locator")
+                        .IsUnique();
+
+                    b.HasIndex("ReleaseId", "Platform", "Architecture", "PackageType")
                         .IsUnique();
 
                     b.ToTable("AppArtifacts", (string)null);
@@ -229,6 +279,85 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.ApplicationDb
                     b.ToTable("OperatingSystems", (string)null);
                 });
 
+            modelBuilder.Entity("Arzenal.Store.Api.Domain.Models.PublicationAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("ActorId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<Guid>("AppId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid?>("ArtifactId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("ReleaseId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppId", "OccurredAt");
+
+                    b.HasIndex("ReleaseId", "OccurredAt");
+
+                    b.ToTable("PublicationAudits", (string)null);
+                });
+
+            modelBuilder.Entity("Arzenal.Store.Api.Domain.Models.Release", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("AppId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Changelog")
+                        .HasMaxLength(16000)
+                        .HasColumnType("varchar(16000)");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("Releases", (string)null);
+                });
+
             modelBuilder.Entity("Arzenal.Store.Api.Domain.Models.Tag", b =>
                 {
                     b.Property<Guid>("Id")
@@ -261,7 +390,15 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.ApplicationDb
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Arzenal.Store.Api.Domain.Models.Release", "Release")
+                        .WithMany("Artifacts")
+                        .HasForeignKey("ReleaseId", "AppId")
+                        .HasPrincipalKey("Id", "AppId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.Navigation("App");
+
+                    b.Navigation("Release");
                 });
 
             modelBuilder.Entity("Arzenal.Store.Api.Domain.Models.AppLanguage", b =>
@@ -321,6 +458,17 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.ApplicationDb
                     b.Navigation("Tag");
                 });
 
+            modelBuilder.Entity("Arzenal.Store.Api.Domain.Models.Release", b =>
+                {
+                    b.HasOne("Arzenal.Store.Api.Domain.Models.App", "App")
+                        .WithMany("Releases")
+                        .HasForeignKey("AppId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("App");
+                });
+
             modelBuilder.Entity("Arzenal.Store.Api.Domain.Models.App", b =>
                 {
                     b.Navigation("AppLanguages");
@@ -330,6 +478,8 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.ApplicationDb
                     b.Navigation("AppTags");
 
                     b.Navigation("Artifacts");
+
+                    b.Navigation("Releases");
                 });
 
             modelBuilder.Entity("Arzenal.Store.Api.Domain.Models.Language", b =>
@@ -340,6 +490,11 @@ namespace Arzenal.Store.Api.Infrastructure.Migrations.ApplicationDb
             modelBuilder.Entity("Arzenal.Store.Api.Domain.Models.OperatingSystem", b =>
                 {
                     b.Navigation("AppOperatingSystems");
+                });
+
+            modelBuilder.Entity("Arzenal.Store.Api.Domain.Models.Release", b =>
+                {
+                    b.Navigation("Artifacts");
                 });
 
             modelBuilder.Entity("Arzenal.Store.Api.Domain.Models.Tag", b =>

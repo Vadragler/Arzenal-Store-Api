@@ -60,7 +60,7 @@ namespace Arzenal.Store.Api.Service.Services.AppFilesService
             _fileScanner = fileScanner;
         }
 
-        public async Task<string> UploadFile(UploadFileDto dto,Stream input)
+        public async Task<string> UploadFile(UploadFileDto dto, Stream input)
         {
             if (input == null || !input.CanRead)
                 throw new ValidationException("Flux invalide.");
@@ -72,6 +72,8 @@ namespace Arzenal.Store.Api.Service.Services.AppFilesService
             var type = dto.Type?.Trim().ToLowerInvariant();
             if (type is not ("icon" or "app"))
                 throw new ValidationException("Type de fichier invalide.");
+            if (type == "app" && app.Slug is not null)
+                throw new DuplicateException("Utiliser les uploads de releases Store V1 pour cette application.");
 
             ValidateFileName(dto.FileName);
             var extension = Path.GetExtension(dto.FileName).ToLowerInvariant();
@@ -160,7 +162,7 @@ namespace Arzenal.Store.Api.Service.Services.AppFilesService
             );
         }
 
-        public async Task <FileResultDto> GetAppIcon(Guid appId)
+        public async Task<FileResultDto> GetAppIcon(Guid appId)
         {
             if (!await _context.Apps.AnyAsync(app => app.Id == appId))
                 throw new NotFoundException("Aucune application trouvée.");
@@ -188,6 +190,9 @@ namespace Arzenal.Store.Api.Service.Services.AppFilesService
             var app = await _context.Apps.FindAsync(appId);
             if (app == null)
                 throw new NotFoundException("Aucune application trouvée.");
+
+            if (app.Slug is not null)
+                throw new DuplicateException("Utiliser la gestion des fichiers de releases Store V1.");
 
             var appDir = GetPathInsideStorage(appId.ToString());
             var artifacts = await _context.AppArtifacts

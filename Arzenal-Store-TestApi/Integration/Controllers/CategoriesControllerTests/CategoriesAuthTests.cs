@@ -5,13 +5,13 @@ using Xunit;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.CategoriesControllerTests
 {
-    public class CategoriesAuthTests : IClassFixture<CustomWebApplicationFactory<Program>>
+    public class CategoriesAuthTests : IsolatedApiTest
     {
         private readonly CustomWebApplicationFactory<Program> _factory;
 
-        public CategoriesAuthTests(CustomWebApplicationFactory<Program> factory)
+        public CategoriesAuthTests()
         {
-            _factory = factory;
+            _factory = Factory;
         }
 
         [Fact]

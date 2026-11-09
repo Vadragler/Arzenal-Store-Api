@@ -8,15 +8,15 @@ using Arzenal.Store.Api.Infrastructure.Data;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.InviteControllerTests
 {
-    public class InviteControllerSuccessTests : IClassFixture<CustomWebApplicationFactory<Program>>
+    public class InviteControllerSuccessTests : IsolatedApiTest
     {
         private readonly CustomWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
 
-        public InviteControllerSuccessTests(CustomWebApplicationFactory<Program> factory)
+        public InviteControllerSuccessTests()
         {
-            _factory = factory;
-            _client = factory.CreateAuthenticatedClient();
+            _factory = Factory;
+            _client = Factory.CreateAuthenticatedClient();
         }
 
         // -----------------------------

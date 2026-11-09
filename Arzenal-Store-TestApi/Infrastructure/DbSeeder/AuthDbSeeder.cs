@@ -8,17 +8,20 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure.DbSeeder
 {
     public static class AuthDbSeeder
     {
+        // Seul le calcul du hash de cette donnée de fixture connue est mutualisé.
+        // Les vrais endpoints login/register gardent le hachage et la vérification de production.
+        private static readonly Lazy<string> FixturePasswordHash = new(() => new PasswordService().Hash("hashed-password"));
+
         public static void Seed(AuthDbContext db)
         {
             var now = DateTime.UtcNow;
-            var passwordService = new PasswordService();
             var user = new User
             {
                 Id = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789"),
                 Username = "existinguser",
                 Email = "existing@example.com",
                 Role = "Admin",
-                PasswordHash = passwordService.Hash("hashed-password")
+                PasswordHash = FixturePasswordHash.Value
             };
             db.Users.Add(user);
             db.RefreshTokens.Add(new RefreshToken

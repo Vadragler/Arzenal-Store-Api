@@ -8,14 +8,14 @@ using System.Text.Json;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.OperatingSystemsControllerTests
 {
-    public class OperatingSystemsControllerSuccessTests : IClassFixture<CustomWebApplicationFactory<Program>>
+    public class OperatingSystemsControllerSuccessTests : IsolatedApiTest
     {
         private readonly CustomWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
 
-        public OperatingSystemsControllerSuccessTests(CustomWebApplicationFactory<Program> factory)
+        public OperatingSystemsControllerSuccessTests()
         {
-            _factory = factory;
+            _factory = Factory;
             _client = _factory.CreateAuthenticatedClient();
         }
 
@@ -34,7 +34,7 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.OperatingSys
             {
                 PropertyNameCaseInsensitive = true
             });
-            
+
             Assert.NotNull(osList);
             Assert.NotEmpty(osList);
             Assert.Contains(osList, os => os.Name == "Windows");

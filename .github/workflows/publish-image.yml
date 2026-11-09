@@ -1,0 +1,67 @@
+name: Publish API image (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  image:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout shared DTO contracts
+        uses: actions/checkout@v4
+        with:
+          repository: Vadragler/Arzenal-Store-Shared-Dtos
+          ref: main
+          path: shared-dtos
+          token: ${{ secrets.SHARED_DTOS_READ_TOKEN }}
+          persist-credentials: false
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image name
+        id: image
+        shell: bash
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - name: Verify ClamAV runtime with inert signatures
+        shell: pwsh
+        run: |
+          docker build -f deploy/clamav.Dockerfile -t arzenal-clamav:debian12 .
+          if ($LASTEXITCODE -ne 0) { throw 'ClamAV image build failed.' }
+          ./scripts/Test-ClamavImage.ps1
+      - name: Build and publish AMD64 and ARM64
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile
+          build-contexts: |
+            shared-dtos=./shared-dtos
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.image.outputs.name }}:sha-${{ github.sha }}
+      - name: Build and publish multiarch ClamAV
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/clamav.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.image.outputs.name }}-clamav:sha-${{ github.sha }}

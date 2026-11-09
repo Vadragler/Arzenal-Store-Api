@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Les entrypoints des conteneurs doivent aussi garder LF après un checkout Windows.
+*.sh text eol=lf
+Arzenal-Store-TestApi/Fixtures/ClamAV/* text eol=lf

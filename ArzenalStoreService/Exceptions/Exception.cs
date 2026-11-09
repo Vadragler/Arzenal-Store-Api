@@ -14,4 +14,6 @@
     {
         public ValidationException(string message) : base(message) { }
     }
+
+    public class ServiceUnavailableException(string message) : Exception(message);
 }

@@ -14,9 +14,26 @@ namespace Arzenal.Store.Api.Service.Services.AppFilesService
 
         public async Task ScanAsync(string filePath, CancellationToken cancellationToken = default)
         {
-            if (!_settings.Enabled)
-                throw new InvalidOperationException("Le scan antivirus est requis mais ClamAV n'est pas configuré.");
+            if (!_settings.Enabled || _settings.TimeoutSeconds is < 1 or > 300)
+                throw new ServiceUnavailableException("Le scanner est indisponible ou mal configuré.");
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(_settings.TimeoutSeconds));
+            try
+            {
+                await ScanCoreAsync(filePath, timeout.Token);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new ServiceUnavailableException("L'analyse antivirus a dépassé son délai.");
+            }
+            catch (Exception exception) when (exception is SocketException or IOException)
+            {
+                throw new ServiceUnavailableException("Le scanner antivirus est inaccessible.");
+            }
+        }
 
+        private async Task ScanCoreAsync(string filePath, CancellationToken cancellationToken)
+        {
             using var client = new TcpClient();
             await client.ConnectAsync(_settings.Host, _settings.Port, cancellationToken);
             await using var network = client.GetStream();
@@ -47,12 +64,21 @@ namespace Arzenal.Store.Api.Service.Services.AppFilesService
             await network.FlushAsync(cancellationToken);
 
             var responseBuffer = new byte[1024];
-            var responseLength = await network.ReadAsync(responseBuffer, cancellationToken);
-            var response = Encoding.UTF8.GetString(responseBuffer, 0, responseLength);
-            if (response.Contains("FOUND", StringComparison.OrdinalIgnoreCase))
-                throw new ValidationException("Le fichier a été rejeté par l'analyse antivirus.");
-            if (!response.Contains("OK", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Le scan antivirus n'a pas retourné de résultat valide.");
+            var responseLength = 0;
+            while (responseLength < responseBuffer.Length)
+            {
+                var read = await network.ReadAsync(responseBuffer.AsMemory(responseLength), cancellationToken);
+                if (read == 0) break;
+                responseLength += read;
+                var terminator = Array.IndexOf(responseBuffer, (byte)0, 0, responseLength);
+                if (terminator < 0) continue;
+                var response = Encoding.UTF8.GetString(responseBuffer, 0, terminator);
+                if (response.EndsWith(" FOUND", StringComparison.Ordinal))
+                    throw new ValidationException("Le fichier a été rejeté par l'analyse antivirus.");
+                if (response == "stream: OK") return;
+                break;
+            }
+            throw new ServiceUnavailableException("Le scan antivirus n'a pas retourné de résultat valide.");
         }
     }
 }

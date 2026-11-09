@@ -4,10 +4,11 @@
     {
         public Guid Id { get; set; } = Guid.NewGuid();
         public required string Name { get; set; }
+        public string? Slug { get; set; }
         public required string Version { get; set; }
         public string? Description { get; set; }
         public bool IsVisible { get; set; }
-        public string? Icone { get; set; }   
+        public string? Icone { get; set; }
         public Guid? CategoryId { get; set; } // Propriété pour l'identifiant de la catégorie
 
         public Categorie? Category { get; set; }
@@ -23,5 +24,7 @@
         public ICollection<AppOperatingSystem>? AppOperatingSystems { get; set; }
 
         public ICollection<AppArtifact>? Artifacts { get; set; }
+
+        public ICollection<Release> Releases { get; set; } = new List<Release>();  // Liste des versions de l'application
     }
 }

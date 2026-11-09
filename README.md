@@ -4,6 +4,9 @@ API ASP.NET Core 10 pour le catalogue Arzenal Store, son authentification et la 
 
 ## Fonctionnalités
 
+- API publique `/api/store/v1` : recherche, catégories, fiches, dernière version compatible Windows/Android.
+- Releases brouillon/publiées/retirées, fichiers immuables, SHA-256 et signature de provenance de l'éditeur.
+- Téléchargements publics reprenables (`Range`, `ETag`) et journal de publication côté serveur.
 - Authentification JWT par cookies `HttpOnly` et refresh-tokens à usage unique.
 - Mots de passe hachés avec Argon2id ; refresh-tokens hachés avant stockage.
 - Gestion des applications, catégories, langues, systèmes et tags.
@@ -17,11 +20,14 @@ API ASP.NET Core 10 pour le catalogue Arzenal Store, son authentification et la 
 ## Prérequis
 
 - SDK .NET 10.
-- MySQL 8 pour l'exécution locale.
+- MySQL 8.4 LTS pour l'exécution locale et le nouveau déploiement.
 - Docker Desktop avec son moteur Linux démarré pour les tests d'intégration : les bases de test sont créées automatiquement avec Testcontainers.
 - ClamAV pour un environnement de production.
 
 ## Configuration locale
+
+Le contrat V1, les commandes de publication et les limites de vérification native sont décrits
+dans [docs/STORE_API_V1.md](docs/STORE_API_V1.md). Commencer par ce guide pour brancher le futur magasin.
 
 Le modèle sans secret est dans [appsettings.example.json](ArzenalStoreApi/appsettings.example.json). Ne copiez jamais de mots de passe, clés JWT ou clé de hachage dans Git. `appsettings.Development.json` est ignoré par Git ; les secrets peuvent aussi être stockés avec User Secrets.
 
@@ -50,13 +56,15 @@ dotnet run --project ArzenalStoreApi
 
 Avec le profil HTTP par défaut, Swagger est accessible sur `http://localhost:5181/swagger`. Le port reste configurable par les profils de lancement, `ASPNETCORE_URLS` ou les variables de ports ASP.NET ; il n'est pas codé dans l'application.
 
-Un téléchargement d'application cible explicitement son artefact :
+Le téléchargement public V1 cible un fichier publié :
 
 ```text
-GET /api/appfiles/download/{appId}/versions/{version}/platforms/{platform}
+GET /api/store/v1/artifacts/{artifactId}/download
 ```
 
-Après l'application de la migration `AddAppArtifactMetadata`, réimportez les fichiers déjà présents sur le volume de stockage : leurs métadonnées n'étaient auparavant pas stockées en base.
+Les anciennes routes `api/appfiles` restent réservées au Manager. Après les migrations,
+configurer le slug et réimporter les anciens fichiers via V1 avant publication : aucun ancien
+binaire ne devient public automatiquement.
 
 ## Tests
 
@@ -65,7 +73,13 @@ dotnet test ArzenalStoreApi.TestUnitaire/Arzenal.Store.Api.TestUnitaire.csproj
 dotnet test Arzenal-Store-TestApi/Arzenal.Store.Api.TestIntegration.csproj
 ```
 
-Les tests d'intégration ne dépendent pas d'une base ou d'un port local : Testcontainers lance MySQL 8, crée deux bases isolées, applique les migrations, puis supprime le conteneur. Docker doit simplement être opérationnel.
+Les tests d'intégration ne dépendent pas d'une base ou d'un port local : Testcontainers lance **un seul serveur MySQL 8.4 LTS par exécution**. Chaque test API dispose de ses propres bases Store/Auth, de son hôte HTTP et de son dossier de fichiers ; les migrations et les données de départ y sont appliquées avant le test. Ces ressources sont supprimées après chaque test, puis le serveur est supprimé en fin de suite, y compris depuis Visual Studio. Docker doit simplement être opérationnel.
+
+Le démarrage du serveur est attendu de façon asynchrone avant les scénarios. La disponibilité est vérifiée par une connexion authentifiée et un `SELECT 1` depuis l'hôte sur le port Docker publié, plutôt que par le socket interne du conteneur. Cette préparation dispose de 90 secondes au maximum, avec des tentatives courtes ; sa durée réelle apparaît dans la sortie des tests (`Préparation de MySQL` puis `MySQL joignable depuis l'hôte`). Les scénarios et leurs assertions ne sont pas relancés automatiquement.
+
+Les classes s'exécutent en parallèle, avec deux tests simultanés au maximum (`Arzenal-Store-TestApi/xunit.runner.json`). Les tests de migration utilisent aussi une base dédiée sur ce serveur. Les pools de connexions de chaque base sont fermés avant sa suppression. Le stockage MySQL en mémoire (`tmpfs`) et les réglages qui réduisent les écritures de journal concernent uniquement ces bases jetables ; la configuration de production reste distincte.
+
+Dernière mesure locale du 9 novembre 2026 : **187 tests réussis en environ 1 min 35 s, initialisation comprise et hors compilation** (`--no-build`), dont 8,5 secondes pour préparer MySQL. L'ancienne configuration avec les conteneurs répétés prenait environ 5 min 26 s pour 182 tests. Les cinq nouveaux cas vérifient le partage du serveur, l'isolation des données et le nettoyage des bases/sessions. Le temps dépend de la machine et du téléchargement initial de l'image MySQL.
 
 ## Déploiement
 

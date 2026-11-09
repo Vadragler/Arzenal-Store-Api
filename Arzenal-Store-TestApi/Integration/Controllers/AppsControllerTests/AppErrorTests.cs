@@ -6,13 +6,13 @@ using System.Text.Json;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AppsControllerTests
 {
-    public class AppsControllerInvalidTests : IClassFixture<CustomWebApplicationFactory<Program>>
+    public class AppsControllerInvalidTests : IsolatedApiTest
     {
         private readonly HttpClient _client;
 
-        public AppsControllerInvalidTests(CustomWebApplicationFactory<Program> factory)
+        public AppsControllerInvalidTests()
         {
-            _client = factory.CreateAuthenticatedClient();
+            _client = Factory.CreateAuthenticatedClient();
         }
 
         // ---------- GET ----------
@@ -113,7 +113,7 @@ namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AppsControll
         public async Task PatchApp_NotFound_Returns404()
         {
             // Arrange
-            var dto = new UpdateAppDto { Name = "Test", Version = "1.0"};
+            var dto = new UpdateAppDto { Name = "Test", Version = "1.0" };
             // 1️⃣ Serialize le DTO une seule fois
             var userId = Guid.Parse("d3f1a9e2-5b6c-4f7d-9a12-8c3e4b5f6789");
             var deviceName = "IntegrationTestDevice";

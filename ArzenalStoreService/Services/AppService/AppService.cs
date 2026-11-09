@@ -10,12 +10,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Arzenal.Store.Api.Service.Services.AppService
 {
-    public class AppService: IAppService
+    public class AppService : IAppService
     {
         private readonly ApplicationDbContext _context;
         private readonly IAppMapper _mapper;
 
-        public AppService(ApplicationDbContext context,IAppMapper mapper)
+        public AppService(ApplicationDbContext context, IAppMapper mapper)
         {
             _context = context;
             _mapper = mapper;
@@ -95,12 +95,12 @@ namespace Arzenal.Store.Api.Service.Services.AppService
             return _mapper.ToReadAppDto(app);
         }
 
-        
+
         public async Task<ReadAppDto> CreateAppAsync(CreateAppDto Appdto)
         {
             if (await _context.Apps.AnyAsync(a => a.Name == Appdto.Name))
                 throw new DuplicateException("Cette application existe déjà");
-            
+
 
             await ValidateCategoryAsync(Appdto.CategoryId);
             await ValidateIdsAsync(Appdto.LanguageIds, _context.Languages.Select(l => l.Id), "Langues invalides");
@@ -114,7 +114,7 @@ namespace Arzenal.Store.Api.Service.Services.AppService
             await _context.SaveChangesAsync();
 
             // Charger les références pour le ReadAppDto
-            await LoadAppRelationsAsync(app);   
+            await LoadAppRelationsAsync(app);
 
             return _mapper.ToReadAppDto(app);
 
@@ -230,8 +230,10 @@ namespace Arzenal.Store.Api.Service.Services.AppService
         public async Task<bool> DeleteAppAsync(Guid id)
         {
             var app = await _context.Apps.FindAsync(id) ?? throw new NotFoundException("Application introuvable");
+            if (app.Slug is not null)
+                throw new DuplicateException("Une application Store doit être masquée, pas supprimée.");
             _context.Apps.Remove(app);
-           
+
             await _context.SaveChangesAsync();
             return true;
         }

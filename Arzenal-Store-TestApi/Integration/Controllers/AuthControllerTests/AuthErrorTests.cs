@@ -5,15 +5,15 @@ using Arzenal.Store.Api.TestIntegration.Infrastructure;
 
 namespace Arzenal.Store.Api.TestIntegration.Integration.Controllers.AuthControllerTests
 {
-    public class AuthErrorTests : IClassFixture<CustomWebApplicationFactory<Program>>
+    public class AuthErrorTests : IsolatedApiTest
     {
         private readonly CustomWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
         private readonly HttpClient _clientUnauthorized;
 
-        public AuthErrorTests(CustomWebApplicationFactory<Program> factory)
+        public AuthErrorTests()
         {
-            _factory = factory;
+            _factory = Factory;
             _client = _factory.CreateAuthenticatedClient();
             _clientUnauthorized = _factory.CreateClient();
         }

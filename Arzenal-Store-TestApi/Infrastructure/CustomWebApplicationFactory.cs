@@ -12,19 +12,17 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
-using MySqlConnector;
 using System.Net;
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
-using Testcontainers.MySql;
+using Microsoft.Extensions.Logging;
 
 namespace Arzenal.Store.Api.TestIntegration.Infrastructure
 {
     public class CustomWebApplicationFactory<TStartup> : WebApplicationFactory<TStartup> where TStartup : class
     {
-        private const string MySqlImage = "mysql:8.0.33";
         private const string JwtSecret = "integration-jwt-secret-must-be-at-least-thirty-two-characters";
         private const string JwtIssuer = "arzenal-integration";
         private const string AppLoginJwtSecret = "integration-app-jwt-secret-must-be-at-least-thirty-two-characters";
@@ -40,15 +38,13 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
                 ["ConnectionStrings:StoreConnection"] = "Server=localhost;Database=placeholder;User Id=placeholder;Password=placeholder;",
                 ["ConnectionStrings:AuthConnection"] = "Server=localhost;Database=placeholder;User Id=placeholder;Password=placeholder;",
                 ["AppLogin:AllowedAppIds:0"] = "ArzenalStoreManager",
-                ["AppLogin:AllowedAppIds:1"] = "integration-test-app"
+                ["AppLogin:AllowedAppIds:1"] = "integration-test-app",
+                ["Database:ApplyMigrationsOnStartup"] = "false"
             };
 
-        private readonly MySqlContainer _databaseContainer;
-        private readonly string _dbName;
-        private readonly string _dbAuthName;
+        private MySqlTestDatabase? _databases;
         private string? _connectionString;
         private string? _connectionAuthString;
-        private bool _containerStarted;
         public string StoragePath { get; private set; } = Path.Combine(Path.GetTempPath(), "ArzenalTest", Guid.NewGuid().ToString());
 
         public new IServiceProvider Services => Server.Services;
@@ -56,27 +52,33 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
         public CustomWebApplicationFactory()
         {
             ConfigureTestProcessEnvironment();
-
-            // MySQL limite les noms de verrous à 64 caractères. EF Core dérive
-            // le nom du verrou à partir du nom de la base, donc ce suffixe doit rester court.
-            var suffix = Guid.NewGuid().ToString("N")[..16];
-            _dbName = $"arzenal_test_{suffix}";
-            _dbAuthName = $"arzenal_auth_test_{suffix}";
-            _databaseContainer = new MySqlBuilder(MySqlImage)
-                .WithDatabase(_dbName)
-                .WithUsername("root")
-                .WithPassword($"Test-{Guid.NewGuid():N}")
-                .Build();
         }
 
         protected override IHost CreateHost(IHostBuilder builder)
         {
             builder.UseEnvironment("Development");
-            return base.CreateHost(builder);
+            var host = base.CreateHost(builder);
+            try
+            {
+                using var scope = host.Services.CreateScope();
+                var appDb = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var authDb = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+                appDb.Database.Migrate();
+                authDb.Database.Migrate();
+                ApplicationDbSeeder.Seed(appDb);
+                AuthDbSeeder.Seed(authDb);
+                return host;
+            }
+            catch
+            {
+                host.Dispose();
+                throw;
+            }
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.ConfigureLogging(logging => logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning));
             builder.ConfigureAppConfiguration((_, configuration) =>
             {
                 configuration.AddInMemoryCollection(TestConfiguration);
@@ -101,23 +103,13 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
                 MapperMocksFactory.SetupDefaultMapperMocks(services);
                 ConfigureJwtForTests(services);
 
-                StartDatabaseContainer();
+                CreateIsolatedDatabases();
 
                 services.AddDbContext<ApplicationDbContext>(options =>
                     options.UseMySql(_connectionString, new MySqlServerVersion(new Version(8, 0, 33))));
                 services.AddDbContext<AuthDbContext>(options =>
                     options.UseMySql(_connectionAuthString, new MySqlServerVersion(new Version(8, 0, 33))));
 
-                // Seed DB
-                var sp = services.BuildServiceProvider();
-                using var scope = sp.CreateScope();
-                var appDb = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var authDb = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
-                appDb.Database.Migrate();
-                authDb.Database.Migrate();
-
-                ApplicationDbSeeder.Seed(appDb);
-                AuthDbSeeder.Seed(authDb);
             });
         }
 
@@ -160,54 +152,44 @@ namespace Arzenal.Store.Api.TestIntegration.Infrastructure
             {
                 if (disposing)
                 {
-                    DisposeContainer(_databaseContainer);
+                    CleanupOwnedResources();
                 }
             }
         }
 
-        private void StartDatabaseContainer()
+        private void CreateIsolatedDatabases()
         {
-            if (_containerStarted)
-            {
-                return;
-            }
+            if (_databases is not null) return;
+            _databases = MySqlTestDatabase.CreateAsync(includeAuth: true).GetAwaiter().GetResult();
+            _connectionString = _databases.StoreConnectionString;
+            _connectionAuthString = _databases.AuthConnectionString;
+        }
 
-            try
-            {
-                _databaseContainer.StartAsync().GetAwaiter().GetResult();
-                _connectionString = _databaseContainer.GetConnectionString();
+        public override async ValueTask DisposeAsync()
+        {
+            try { await base.DisposeAsync(); }
+            finally { CleanupOwnedResources(); }
+        }
 
-                var serverConnectionStringBuilder = new MySqlConnectionStringBuilder(_connectionString)
+        private void CleanupOwnedResources()
+        {
+            try { Interlocked.Exchange(ref _databases, null)?.Dispose(); }
+            finally
+            {
+                if (Directory.Exists(StoragePath))
                 {
-                    Database = "mysql"
-                };
-
-                using var serverConnection = new MySqlConnection(serverConnectionStringBuilder.ConnectionString);
-                serverConnection.Open();
-
-                using var createAuthDatabaseCommand = new MySqlCommand($"CREATE DATABASE `{_dbAuthName}`;", serverConnection);
-                createAuthDatabaseCommand.ExecuteNonQuery();
-
-                _connectionAuthString = new MySqlConnectionStringBuilder(_connectionString)
-                {
-                    Database = _dbAuthName
-                }.ConnectionString;
-                _containerStarted = true;
-            }
-            catch
-            {
-                DisposeContainer(_databaseContainer);
-                throw;
+                    var path = Path.GetFullPath(StoragePath);
+                    var prefix = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "ArzenalTest")) + Path.DirectorySeparatorChar;
+                    var comparison = System.OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+                    if (!path.StartsWith(prefix, comparison) || !Guid.TryParse(Path.GetFileName(path), out _))
+                        throw new InvalidOperationException("Répertoire de test non autorisé pour le nettoyage.");
+                    Directory.Delete(path, recursive: true);
+                }
             }
         }
 
-        private static void DisposeContainer(MySqlContainer container)
-        {
-            container.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        }
 
-
-        public HttpClient CreateAuthenticatedClient(string? userAgent="ArzenalStoreManager",string? token = null)
+        public HttpClient CreateAuthenticatedClient(string? userAgent = "ArzenalStoreManager", string? token = null)
         {
             var factory = this;
             var loginClient = factory.CreateClient(new WebApplicationFactoryClientOptions
